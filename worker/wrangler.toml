@@ -1,0 +1,16 @@
+name = "daily-vedic-astro-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+[vars]
+ENVIRONMENT = "development"
+ALLOWED_ORIGINS = "http://localhost:8081,http://localhost:19006"
+ASTROLOGY_PROVIDER_URL = ""
+OTP_PROVIDER_URL = ""
+REVENUECAT_ENTITLEMENT_ID = "premium"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "daily-vedic-astro"
+database_id = "replace-with-your-d1-database-id"
+migrations_dir = "migrations"

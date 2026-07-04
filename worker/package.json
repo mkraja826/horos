@@ -1,0 +1,22 @@
+{
+  "name": "daily-vedic-astro-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:local": "wrangler d1 migrations apply daily-vedic-astro --local",
+    "db:remote": "wrangler d1 migrations apply daily-vedic-astro --remote"
+  },
+  "dependencies": {
+    "hono": "^4.10.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "typescript": "~6.0.3",
+    "wrangler": "latest"
+  }
+}

@@ -36,20 +36,5 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Capture Deno report
-        run: |
-          set +e
-          deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/index.ts > deno-report.txt 2>&1
-          echo $? > deno-exit-code.txt
-          exit 0
-
-      - name: Upload Deno report
-        uses: actions/upload-artifact@v4
-        with:
-          name: horos-deno-report
-          path: |
-            deno-report.txt
-            deno-exit-code.txt
-
-      - name: Fail on Deno errors
-        run: test "$(cat deno-exit-code.txt)" -eq 0
+      - name: Type-check Supabase Edge Function
+        run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/index.ts

@@ -6,6 +6,7 @@ const sharedSections = {
     title: "Overall focus",
     icon: "sun",
     content: "Move through responsibilities one at a time and leave room to review important details.",
+    premium: false,
   },
   family: {
     key: "family",

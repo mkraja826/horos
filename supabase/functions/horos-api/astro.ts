@@ -1,11 +1,36 @@
-import type { AstroPanchangaResponse, AstroPositionsResponse, ChartResult, ProfileInput } from "./types.ts";
+import type {
+  AstroPanchangaResponse,
+  AstroPositionsResponse,
+  ChartResult,
+  ProfileInput,
+} from "./types.ts";
 
 const CALCULATION_PROFILE = "south_indian_drik_lahiri_jpl_de440s_v1";
-const RASHI_NAMES = ["Mesha", "Vrishabha", "Mithuna", "Karka", "Simha", "Kanya", "Tula", "Vrishchika", "Dhanu", "Makara", "Kumbha", "Meena"] as const;
+const RASHI_NAMES = [
+  "Mesha",
+  "Vrishabha",
+  "Mithuna",
+  "Karka",
+  "Simha",
+  "Kanya",
+  "Tula",
+  "Vrishchika",
+  "Dhanu",
+  "Makara",
+  "Kumbha",
+  "Meena",
+] as const;
 const ELEMENTS = ["Fire", "Earth", "Air", "Water"] as const;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class AstroProviderError extends Error {
-  constructor(message: string, public status = 502, public providerStatus?: number) {
+  constructor(
+    message: string,
+    public status = 502,
+    public providerStatus?: number,
+    public providerCode?: string,
+    public requestId?: string,
+  ) {
     super(message);
     this.name = "AstroProviderError";
   }
@@ -14,38 +39,100 @@ export class AstroProviderError extends Error {
 function providerUrl(): string {
   const value = Deno.env.get("ASTRO_API_URL")?.trim().replace(/\/$/, "");
   if (!value) throw new AstroProviderError("The JPL Astro calculation API is not configured.", 503);
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new AstroProviderError("The JPL Astro calculation API URL is invalid.", 503);
+  }
+  const environment = Deno.env.get("ENVIRONMENT") ?? "development";
+  if (environment === "production" && parsed.protocol !== "https:") {
+    throw new AstroProviderError("The JPL Astro calculation API must use HTTPS.", 503);
+  }
   return value;
 }
 
-async function astroRequest<T>(path: string, body: Record<string, unknown>): Promise<T> {
+function providerKey(): string {
+  const value = Deno.env.get("ASTRO_API_KEY")?.trim();
+  if (!value) throw new AstroProviderError("The JPL Astro service credential is not configured.", 503);
+  return value;
+}
+
+function consumerId(value: string): string {
+  const normalized = value.trim();
+  if (!UUID_PATTERN.test(normalized)) {
+    throw new AstroProviderError("The Horos consumer identity is invalid.", 500);
+  }
+  return normalized;
+}
+
+export function buildAstroProviderHeaders(
+  apiKey: string,
+  astroConsumerId: string,
+  requestId: string,
+): HeadersInit {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "X-Astro-Consumer-ID": astroConsumerId,
+    "X-Request-ID": requestId,
+  };
+}
+
+function providerErrorDetails(payload: unknown): { code?: string; message?: string } {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {};
+  const object = payload as Record<string, unknown>;
+  const code = typeof object.code === "string" ? object.code : undefined;
+  const message = typeof object.message === "string"
+    ? object.message
+    : typeof object.detail === "string"
+    ? object.detail
+    : undefined;
+  return { code, message };
+}
+
+async function astroRequest<T>(
+  path: string,
+  body: Record<string, unknown>,
+  astroConsumerId: string,
+): Promise<{ payload: T; requestId: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25_000);
-  const key = Deno.env.get("ASTRO_API_KEY")?.trim();
+  const requestId = `horos-${crypto.randomUUID()}`;
   try {
     const response = await fetch(`${providerUrl()}${path}`, {
       method: "POST",
       signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        ...(key ? { Authorization: `Bearer ${key}` } : {}),
-      },
+      headers: buildAstroProviderHeaders(providerKey(), consumerId(astroConsumerId), requestId),
       body: JSON.stringify(body),
     });
+    const responseRequestId = response.headers.get("x-request-id")?.trim() || requestId;
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const detail = payload && typeof payload === "object" && "detail" in payload
-        ? String((payload as { detail?: unknown }).detail)
-        : `Astro API returned HTTP ${response.status}.`;
-      throw new AstroProviderError(detail, 502, response.status);
+      const details = providerErrorDetails(payload);
+      throw new AstroProviderError(
+        details.message ?? `Astro API returned HTTP ${response.status}.`,
+        502,
+        response.status,
+        details.code,
+        responseRequestId,
+      );
     }
-    return payload as T;
+    return { payload: payload as T, requestId: responseRequestId };
   } catch (error) {
     if (error instanceof AstroProviderError) throw error;
     if (error instanceof Error && error.name === "AbortError") {
-      throw new AstroProviderError("The JPL Astro API timed out.", 504);
+      throw new AstroProviderError("The JPL Astro API timed out.", 504, undefined, undefined, requestId);
     }
-    throw new AstroProviderError(error instanceof Error ? error.message : "The JPL Astro API is unavailable.");
+    throw new AstroProviderError(
+      error instanceof Error ? error.message : "The JPL Astro API is unavailable.",
+      502,
+      undefined,
+      undefined,
+      requestId,
+    );
   } finally {
     clearTimeout(timeout);
   }
@@ -72,11 +159,26 @@ function elementName(signIndex: number): string {
   return ELEMENTS[(signIndex - 1) % ELEMENTS.length] ?? "Unknown";
 }
 
-export async function calculateChart(input: ProfileInput): Promise<ChartResult> {
-  const positions = await astroRequest<AstroPositionsResponse>("/v1/positions", birthPayload(input));
+export async function calculateChart(input: ProfileInput, astroConsumerId: string): Promise<ChartResult> {
+  const result = await astroRequest<AstroPositionsResponse>(
+    "/v1/positions",
+    birthPayload(input),
+    astroConsumerId,
+  );
+  const positions = result.payload;
   const moon = positions.planets.find((point) => point.body === "moon");
-  if (!moon) throw new AstroProviderError("The JPL Astro API response did not include the Moon.");
-  const planetaryPositions = Object.fromEntries(positions.planets.map((point) => [point.body, point.longitude]));
+  if (!moon) {
+    throw new AstroProviderError(
+      "The JPL Astro API response did not include the Moon.",
+      502,
+      undefined,
+      "MOON_MISSING",
+      result.requestId,
+    );
+  }
+  const planetaryPositions = Object.fromEntries(
+    positions.planets.map((point) => [point.body, point.longitude]),
+  );
   return {
     rashi: rashiName(moon.sign_index),
     nakshatra: moon.nakshatra,
@@ -95,6 +197,7 @@ export async function calculateChart(input: ProfileInput): Promise<ChartResult> 
       engine: positions.metadata.engine,
       astronomicalProvider: positions.metadata.astronomical_provider,
       ephemerisModel: positions.metadata.ephemeris_model,
+      requestId: result.requestId,
     },
     rawPositions: positions,
   };
@@ -109,24 +212,32 @@ function formatClock(isoValue: string, timezone: string): string {
   }).format(new Date(isoValue));
 }
 
-export async function calculatePanchang(input: {
-  localDate: string;
-  timezone: string;
-  latitude: number;
-  longitude: number;
-  altitudeMeters?: number;
-  locationLabel: string;
-}) {
-  const result = await astroRequest<AstroPanchangaResponse>("/v1/panchanga", {
-    location: {
-      local_date: input.localDate,
-      timezone: input.timezone,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      altitude_meters: input.altitudeMeters ?? 0,
+export async function calculatePanchang(
+  input: {
+    localDate: string;
+    timezone: string;
+    latitude: number;
+    longitude: number;
+    altitudeMeters?: number;
+    locationLabel: string;
+  },
+  astroConsumerId: string,
+) {
+  const response = await astroRequest<AstroPanchangaResponse>(
+    "/v1/panchanga",
+    {
+      location: {
+        local_date: input.localDate,
+        timezone: input.timezone,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        altitude_meters: input.altitudeMeters ?? 0,
+      },
+      calculation_profile: CALCULATION_PROFILE,
     },
-    calculation_profile: CALCULATION_PROFILE,
-  });
+    astroConsumerId,
+  );
+  const result = response.payload;
   return {
     date: result.local_date,
     location: input.locationLabel,
@@ -145,10 +256,13 @@ export async function calculatePanchang(input: {
       engine: result.metadata.engine,
       astronomicalProvider: result.metadata.astronomical_provider,
       ephemerisModel: result.metadata.ephemeris_model,
+      requestId: response.requestId,
     },
   };
 }
 
 export function isAstroProviderConfigured(): boolean {
-  return Boolean(Deno.env.get("ASTRO_API_URL")?.trim());
+  return Boolean(
+    Deno.env.get("ASTRO_API_URL")?.trim() && Deno.env.get("ASTRO_API_KEY")?.trim(),
+  );
 }

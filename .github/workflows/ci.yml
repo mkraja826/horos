@@ -25,23 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Capture TypeScript report
-        run: |
-          set +e
-          npm run typecheck > typecheck-report.txt 2>&1
-          echo $? > typecheck-exit-code.txt
-          exit 0
-
-      - name: Upload TypeScript report
-        uses: actions/upload-artifact@v4
-        with:
-          name: horos-typecheck-report
-          path: |
-            typecheck-report.txt
-            typecheck-exit-code.txt
-
-      - name: Fail on TypeScript errors
-        run: test "$(cat typecheck-exit-code.txt)" -eq 0
+      - name: Type-check Expo and legacy Worker
+        run: npm run typecheck
 
       - name: Lint Expo app
         run: npm run lint
@@ -51,5 +36,20 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Type-check Supabase Edge Function
-        run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/index.ts
+      - name: Capture Deno report
+        run: |
+          set +e
+          deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/index.ts > deno-report.txt 2>&1
+          echo $? > deno-exit-code.txt
+          exit 0
+
+      - name: Upload Deno report
+        uses: actions/upload-artifact@v4
+        with:
+          name: horos-deno-report
+          path: |
+            deno-report.txt
+            deno-exit-code.txt
+
+      - name: Fail on Deno errors
+        run: test "$(cat deno-exit-code.txt)" -eq 0

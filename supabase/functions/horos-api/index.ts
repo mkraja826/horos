@@ -239,14 +239,17 @@ async function route(request: Request): Promise<Response> {
       throw new ResponseError("Panchang requires complete access.", 402, "PREMIUM_REQUIRED");
     }
     if (!rows) throw new ResponseError("Complete your birth profile first.", 404, "PROFILE_NOT_FOUND");
-    const result = await calculatePanchang({
-      localDate: localDateInTimezone(rows.birth.timezone),
-      timezone: rows.birth.timezone,
-      latitude: rows.birth.latitude,
-      longitude: rows.birth.longitude,
-      altitudeMeters: rows.birth.altitude_meters,
-      locationLabel: rows.birth.birth_place,
-    });
+    const result = await calculatePanchang(
+      {
+        localDate: localDateInTimezone(rows.birth.timezone),
+        timezone: rows.birth.timezone,
+        latitude: rows.birth.latitude,
+        longitude: rows.birth.longitude,
+        altitudeMeters: rows.birth.altitude_meters,
+        locationLabel: rows.birth.birth_place,
+      },
+      user.id,
+    );
     return json(request, result);
   }
 
@@ -281,7 +284,12 @@ Deno.serve(async (request) => {
     if (error instanceof AstroProviderError) {
       return json(
         request,
-        { code: "ASTROLOGY_PROVIDER_UNAVAILABLE", message: error.message },
+        {
+          code: "ASTROLOGY_PROVIDER_UNAVAILABLE",
+          message: error.message,
+          providerCode: error.providerCode,
+          requestId: error.requestId,
+        },
         error.status,
       );
     }

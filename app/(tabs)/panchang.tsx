@@ -29,7 +29,7 @@ export default function PanchangScreen() {
       {!subscription.isPremium ? (
         <PremiumLock />
       ) : panchang.isLoading ? (
-        <LoadingCard label="Calculating local timings…" />
+        <LoadingCard label="Calculating JPL-backed timings…" />
       ) : panchang.isError || !panchang.data ? (
         <QueryError onRetry={() => panchang.refetch()} />
       ) : (
@@ -39,17 +39,20 @@ export default function PanchangScreen() {
               <IconBadge name="calendar" tone="blue" />
               <View style={{ flex: 1 }}>
                 <AppText variant="label">{panchang.data.location}</AppText>
-                <AppText variant="caption" muted>Timings use your current city preference</AppText>
+                <AppText variant="caption" muted>
+                  Timings currently use the saved birth-place coordinates and timezone.
+                </AppText>
               </View>
             </View>
           </Card>
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
             {[
+              ...(panchang.data.vara ? [["Vara", panchang.data.vara]] : []),
               ["Tithi", panchang.data.tithi],
               ["Nakshatra", panchang.data.nakshatra],
               ["Yoga", panchang.data.yoga],
-              ["Karana", panchang.data.karana]
+              ["Karana", panchang.data.karana],
             ].map(([label, value]) => (
               <Card key={label} style={{ width: "48%", flexGrow: 1, minHeight: 92, padding: spacing.md }}>
                 <AppText variant="caption" muted>{label}</AppText>
@@ -72,42 +75,44 @@ export default function PanchangScreen() {
             </View>
           </Card>
 
-          <Card style={{ gap: 0 }}>
-            {[
-              ["Rahu Kalam", panchang.data.rahuKalam, colors.maroon],
-              ["Yamagandam", panchang.data.yamagandam, colors.warning],
-              ["Gulika Kalam", panchang.data.gulikaKalam, colors.textMuted],
-              ["Auspicious period", panchang.data.auspiciousPeriod, colors.success]
-            ].map(([label, value, tint], index, all) => (
-              <View
-                key={label}
-                style={{
-                  paddingVertical: spacing.md,
-                  borderBottomWidth: index < all.length - 1 ? 1 : 0,
-                  borderBottomColor: colors.border,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: spacing.md
-                }}
-              >
-                <View style={{ width: 8, height: 8, borderRadius: radius.pill, backgroundColor: tint }} />
-                <AppText variant="label" style={{ flex: 1 }}>{label}</AppText>
-                <AppText variant="label" style={{ fontVariant: ["tabular-nums"] }}>{value}</AppText>
-              </View>
-            ))}
-          </Card>
-
-          {panchang.data.importantDay ? (
-            <Card tone="warm">
-              <AppText variant="label">Day note</AppText>
-              <AppText muted>{panchang.data.importantDay}</AppText>
+          {[panchang.data.rahuKalam, panchang.data.yamagandam, panchang.data.gulikaKalam, panchang.data.auspiciousPeriod].some(Boolean) ? (
+            <Card style={{ gap: 0 }}>
+              {[
+                ["Rahu Kalam", panchang.data.rahuKalam, colors.maroon],
+                ["Yamagandam", panchang.data.yamagandam, colors.warning],
+                ["Gulika Kalam", panchang.data.gulikaKalam, colors.textMuted],
+                ["Auspicious period", panchang.data.auspiciousPeriod, colors.success],
+              ].filter(([, value]) => Boolean(value)).map(([label, value, tint], index, all) => (
+                <View
+                  key={label}
+                  style={{
+                    paddingVertical: spacing.md,
+                    borderBottomWidth: index < all.length - 1 ? 1 : 0,
+                    borderBottomColor: colors.border,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: spacing.md,
+                  }}
+                >
+                  <View style={{ width: 8, height: 8, borderRadius: radius.pill, backgroundColor: tint }} />
+                  <AppText variant="label" style={{ flex: 1 }}>{label}</AppText>
+                  <AppText variant="label" style={{ fontVariant: ["tabular-nums"] }}>{value}</AppText>
+                </View>
+              ))}
             </Card>
           ) : null}
+
+          <Card tone="warm">
+            <AppText variant="label">Calculation method</AppText>
+            <AppText muted>
+              Skyfield with JPL DE440s, Lahiri Chitrapaksha, and geometric solar-centre sunrise/sunset without atmospheric refraction.
+            </AppText>
+          </Card>
         </>
       )}
 
       <AppText variant="caption" muted style={{ textAlign: "center" }}>
-        Panchang timings vary by location. Confirm with your family priest for ceremonial observances.
+        Confirm ceremonial observances with a qualified local practitioner because almanac conventions may differ.
       </AppText>
     </Screen>
   );

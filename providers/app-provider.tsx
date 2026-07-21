@@ -1,19 +1,24 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from "react";
 
-import { api, isApiConfigured, type OnboardingPayload } from "@/lib/api-client";
+import {
+  api,
+  isApiConfigured,
+  REFRESH_SESSION_KEY,
+  SESSION_KEY,
+  type OnboardingPayload,
+} from "@/lib/api-client";
 import { demoProfile } from "@/lib/fixtures";
 import {
   deleteSecureValue,
   getSecureJson,
   getSecureValue,
   setSecureJson,
-  setSecureValue
+  setSecureValue,
 } from "@/lib/secure-storage";
 import type { Gender, Language, SubscriptionState, UserProfile } from "@/types/models";
 
 const PROFILE_KEY = "private-user-profile";
 const SUBSCRIPTION_KEY = "subscription-state";
-const SESSION_KEY = "session-token";
 
 export type OnboardingInput = {
   fullName: string;
@@ -24,6 +29,10 @@ export type OnboardingInput = {
   timeOfBirth: string;
   birthPlace: string;
   currentCity?: string;
+  timezone: string;
+  latitude: number;
+  longitude: number;
+  altitudeMeters?: number;
 };
 
 type LoginRequest = { challengeId: string; devOtp?: string };
@@ -48,7 +57,7 @@ const limitedSubscription: SubscriptionState = {
   access: "limited",
   status: "expired",
   daysRemaining: 0,
-  isPremium: false
+  isPremium: false,
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -60,7 +69,7 @@ function newTrial(): SubscriptionState {
     status: "trial",
     trialEndsAt,
     daysRemaining: 30,
-    isPremium: true
+    isPremium: true,
   };
 }
 
@@ -82,11 +91,15 @@ function localProfile(input: OnboardingInput, identifier: string): UserProfile {
       timeOfBirth: input.timeOfBirth,
       birthPlace: input.birthPlace,
       currentCity: input.currentCity,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"
+      timezone: input.timezone,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      altitudeMeters: input.altitudeMeters,
     },
     rashi: rashis[seed % rashis.length],
     nakshatra: nakshatras[seed % nakshatras.length],
-    lagna: rashis[(seed + 4) % rashis.length]
+    lagna: rashis[(seed + 4) % rashis.length],
+    calculationMode: "estimated",
   };
 }
 
@@ -102,7 +115,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
     Promise.all([
       getSecureValue(SESSION_KEY),
       getSecureJson<UserProfile>(PROFILE_KEY),
-      getSecureJson<SubscriptionState>(SUBSCRIPTION_KEY)
+      getSecureJson<SubscriptionState>(SUBSCRIPTION_KEY),
     ]).then(async ([savedToken, savedProfile, savedSubscription]) => {
       if (!mounted) return;
       setToken(savedToken);
@@ -114,14 +127,15 @@ export function AppProvider({ children }: React.PropsWithChildren) {
         try {
           const [{ profile: remoteProfile }, remoteSubscription] = await Promise.all([
             api.getProfile(),
-            api.subscriptionStatus()
+            api.subscriptionStatus(),
           ]);
           if (!mounted) return;
+          setToken(await getSecureValue(SESSION_KEY));
           setProfile(remoteProfile);
           setSubscription(remoteSubscription);
           await Promise.all([
             setSecureJson(PROFILE_KEY, remoteProfile),
-            setSecureJson(SUBSCRIPTION_KEY, remoteSubscription)
+            setSecureJson(SUBSCRIPTION_KEY, remoteSubscription),
           ]);
         } catch {
           // Keep the last encrypted profile for a calm offline startup.
@@ -140,7 +154,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       return { challengeId: "local-challenge", devOtp: "123456" };
     }
     const response = await api.requestOtp(loginIdentifier);
-    return { challengeId: response.challengeId, devOtp: response.devOtp };
+    return { challengeId: response.challengeId };
   }, []);
 
   const verifyOtp = useCallback(async (loginIdentifier: string, challengeId: string, otp: string) => {
@@ -153,7 +167,10 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       return;
     }
     const response = await api.verifyOtp(loginIdentifier, challengeId, otp);
-    await setSecureValue(SESSION_KEY, response.token);
+    await Promise.all([
+      setSecureValue(SESSION_KEY, response.token),
+      setSecureValue(REFRESH_SESSION_KEY, response.refreshToken),
+    ]);
     setToken(response.token);
     setIdentifier(loginIdentifier);
     if (response.profile) {
@@ -165,16 +182,13 @@ export function AppProvider({ children }: React.PropsWithChildren) {
   const completeOnboarding = useCallback(
     async (input: OnboardingInput) => {
       if (isApiConfigured) {
-        const payload: OnboardingPayload = {
-          ...input,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"
-        };
+        const payload: OnboardingPayload = { ...input };
         const response = await api.createProfile(payload);
         setProfile(response.profile);
         setSubscription(response.subscription);
         await Promise.all([
           setSecureJson(PROFILE_KEY, response.profile),
-          setSecureJson(SUBSCRIPTION_KEY, response.subscription)
+          setSecureJson(SUBSCRIPTION_KEY, response.subscription),
         ]);
         return;
       }
@@ -185,7 +199,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       setSubscription(trial);
       await Promise.all([
         setSecureJson(PROFILE_KEY, nextProfile),
-        setSecureJson(SUBSCRIPTION_KEY, trial)
+        setSecureJson(SUBSCRIPTION_KEY, trial),
       ]);
     },
     [identifier]
@@ -203,7 +217,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       const nextProfile: UserProfile = {
         ...profile,
         ...input,
-        birth: { ...profile.birth }
+        birth: { ...profile.birth },
       };
       setProfile(nextProfile);
       await setSecureJson(PROFILE_KEY, nextProfile);
@@ -228,8 +242,9 @@ export function AppProvider({ children }: React.PropsWithChildren) {
   const clearPrivateState = useCallback(async () => {
     await Promise.all([
       deleteSecureValue(SESSION_KEY),
+      deleteSecureValue(REFRESH_SESSION_KEY),
       deleteSecureValue(PROFILE_KEY),
-      deleteSecureValue(SUBSCRIPTION_KEY)
+      deleteSecureValue(SUBSCRIPTION_KEY),
     ]);
     setToken(null);
     setProfile(null);
@@ -258,7 +273,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       refreshSubscription,
       activateLocalTrial,
       logout,
-      deleteAccount
+      deleteAccount,
     }),
     [
       booting,
@@ -272,7 +287,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       refreshSubscription,
       activateLocalTrial,
       logout,
-      deleteAccount
+      deleteAccount,
     ]
   );
 
@@ -280,7 +295,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
 }
 
 export function useApp() {
-  const value = React.use(AppContext);
+  const value = React.useContext(AppContext);
   if (!value) throw new Error("useApp must be used inside AppProvider");
   return value;
 }

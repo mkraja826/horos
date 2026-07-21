@@ -1,67 +1,95 @@
-# Astrology provider contract
+# JPL Astro provider contract
 
-The Worker deliberately keeps ephemeris math behind a provider boundary. Production calls the configured provider with `zodiac: "sidereal"` and `ayanamsa: "lahiri"`; if no provider is configured, production returns a service error rather than presenting estimated values as authoritative.
+Horos uses the separate `mkraja826/Astro` FastAPI service as its only production calculation provider.
 
-## Birth chart
+## Provider identity
 
-`POST {ASTROLOGY_PROVIDER_URL}/birth-chart`
+```text
+engine: Jyothisyam API
+astronomical provider: Skyfield + JPL DE440s
+calculation profile: south_indian_drik_lahiri_jpl_de440s_v1
+```
+
+There is no Swiss Ephemeris fallback and no seeded calculation fallback in production.
+
+## Configuration
+
+The Supabase Edge Function reads:
+
+```text
+ASTRO_API_URL
+ASTRO_API_KEY (optional)
+```
+
+Requests time out and return a provider-unavailable error rather than presenting estimated values as authoritative.
+
+## Birth positions
+
+```http
+POST {ASTRO_API_URL}/v1/positions
+```
 
 Request:
 
 ```json
 {
-  "dateOfBirth": "1986-08-14",
-  "timeOfBirth": "07:30",
-  "birthPlace": "Hyderabad, Telangana, India",
-  "timezone": "Asia/Kolkata",
-  "latitude": 17.385,
-  "longitude": 78.4867,
-  "zodiac": "sidereal",
-  "ayanamsa": "lahiri"
+  "birth": {
+    "local_datetime": "1998-10-26T10:28:00",
+    "timezone": "Asia/Kolkata",
+    "latitude": 16.575,
+    "longitude": 79.312,
+    "altitude_meters": 120
+  },
+  "calculation_profile": "south_indian_drik_lahiri_jpl_de440s_v1"
 }
 ```
 
-Response:
+Horos derives the consumer summary as follows:
+
+- Rāśi: Moon's sidereal sign
+- Nakṣatra and Pada: Moon placement
+- Lagna: sidereal Ascendant
+- planetary positions: provider longitudes
+- provenance: provider engine, ephemeris model, profile and ayanāṁśa
+
+Interpretive strengths, challenges and personality claims are not inferred from these values until a separately validated interpretation layer is implemented.
+
+## Panchanga
+
+```http
+POST {ASTRO_API_URL}/v1/panchanga
+```
+
+Request:
 
 ```json
 {
-  "rashi": "Vrishabha",
-  "nakshatra": "Rohini",
-  "lagna": "Simha",
-  "birthStar": "Rohini – 2nd Pada",
-  "element": "Earth",
-  "nature": "Steady and nurturing",
-  "strengths": ["Patient decision-making"],
-  "challenges": ["Holding worries silently"],
-  "lifestyleBalance": "Keep steady routines with room for rest.",
-  "dasha": "Jupiter major period",
-  "planetaryPositions": { "sun": 117.42, "moon": 46.18 },
-  "transitScore": 0.62
+  "location": {
+    "local_date": "2026-07-21",
+    "timezone": "Asia/Kolkata",
+    "latitude": 16.575,
+    "longitude": 79.312,
+    "altitude_meters": 120
+  },
+  "calculation_profile": "south_indian_drik_lahiri_jpl_de440s_v1"
 }
 ```
 
-## Panchang
+Horos displays only fields returned by the provider:
 
-`POST {ASTROLOGY_PROVIDER_URL}/panchang`
+- Vara
+- Tithi and Paksha
+- Nakṣatra and Pada
+- Yoga
+- Karaṇa
+- geometric solar-centre sunrise and sunset
 
-Request includes date, location/timezone, coordinates, `zodiac` and `ayanamsa`. Return:
+Rahu Kāla, Yamagandam, Gulika Kāla, festival notes and auspicious periods are not fabricated when the provider does not calculate them.
 
-```json
-{
-  "date": "2026-06-24",
-  "location": "Hyderabad, India",
-  "tithi": "Shukla Navami",
-  "nakshatra": "Hasta",
-  "yoga": "Siddha",
-  "karana": "Balava",
-  "sunrise": "5:44 AM",
-  "sunset": "6:52 PM",
-  "rahuKalam": "12:18 PM – 1:56 PM",
-  "yamagandam": "7:22 AM – 9:01 AM",
-  "gulikaKalam": "10:39 AM – 12:18 PM",
-  "auspiciousPeriod": "9:18 AM – 10:28 AM",
-  "importantDay": "Optional festival or observance note"
-}
-```
+## Required input quality
 
-Use an Indian-calendar/ephemeris vendor whose license permits caching and consumer display. Validate its Lahiri interpretation and sunrise-based day boundaries with a qualified Vedic astrologer before release.
+Birth chart calculation requires exact civil time, an IANA birth timezone and numeric coordinates. Place-name text alone is not sufficient. The API must reject missing coordinates or an unknown timezone.
+
+## Validation
+
+The Astro repository contains twelve digest-locked JPL regression baselines. These protect calculation stability but are not a substitute for two-source external Jyotiṣa software review.

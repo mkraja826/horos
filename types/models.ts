@@ -9,6 +9,7 @@ export type BirthDetails = {
   timezone: string;
   latitude?: number;
   longitude?: number;
+  altitudeMeters?: number;
 };
 
 export type UserProfile = {
@@ -23,6 +24,8 @@ export type UserProfile = {
   rashi: string;
   nakshatra: string;
   lagna: string;
+  calculationProfile?: string;
+  calculationMode?: "provider" | "estimated";
 };
 
 export type SubscriptionState = {
@@ -56,24 +59,33 @@ export type HoroscopeReading = {
   cautionTime?: string;
   sections: ReadingSection[];
   generatedAt: string;
-  calculationMode: "provider" | "estimated";
+  calculationMode: "provider" | "estimated" | "editorial";
 };
 
 export type Panchang = {
   date: string;
   location: string;
+  vara?: string;
   tithi: string;
   nakshatra: string;
   yoga: string;
   karana: string;
   sunrise: string;
   sunset: string;
-  rahuKalam: string;
-  yamagandam: string;
-  gulikaKalam: string;
-  auspiciousPeriod: string;
+  rahuKalam?: string;
+  yamagandam?: string;
+  gulikaKalam?: string;
+  auspiciousPeriod?: string;
   importantDay?: string;
   calculationMode: "provider" | "estimated";
+  calculationProfile?: string;
+  ayanamshaDegrees?: number;
+  solarMethod?: string;
+  provider?: {
+    engine: string;
+    astronomicalProvider: string;
+    ephemerisModel?: string | null;
+  };
 };
 
 export type BirthChart = {
@@ -87,5 +99,13 @@ export type BirthChart = {
   challenges: string[];
   lifestyleBalance: string;
   dasha?: string;
+  planetaryPositions?: Record<string, number>;
   calculationMode: "provider" | "estimated";
+  calculationProfile?: string;
+  ayanamshaDegrees?: number;
+  provider?: {
+    engine: string;
+    astronomicalProvider: string;
+    ephemerisModel?: string | null;
+  };
 };

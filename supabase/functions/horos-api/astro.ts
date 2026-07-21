@@ -99,3 +99,56 @@ export async function calculateChart(input: ProfileInput): Promise<ChartResult> 
     rawPositions: positions,
   };
 }
+
+function formatClock(isoValue: string, timezone: string): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: timezone,
+  }).format(new Date(isoValue));
+}
+
+export async function calculatePanchang(input: {
+  localDate: string;
+  timezone: string;
+  latitude: number;
+  longitude: number;
+  altitudeMeters?: number;
+  locationLabel: string;
+}) {
+  const result = await astroRequest<AstroPanchangaResponse>("/v1/panchanga", {
+    location: {
+      local_date: input.localDate,
+      timezone: input.timezone,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      altitude_meters: input.altitudeMeters ?? 0,
+    },
+    calculation_profile: CALCULATION_PROFILE,
+  });
+  return {
+    date: result.local_date,
+    location: input.locationLabel,
+    vara: result.vara.name,
+    tithi: `${result.tithi.paksha} ${result.tithi.name}`.trim(),
+    nakshatra: `${result.nakshatra.name} – Pada ${result.nakshatra.pada}`,
+    yoga: result.yoga.name,
+    karana: result.karana.name,
+    sunrise: formatClock(result.solar_times.sunrise_local, result.timezone),
+    sunset: formatClock(result.solar_times.sunset_local, result.timezone),
+    calculationMode: "provider" as const,
+    calculationProfile: result.calculation_profile,
+    ayanamshaDegrees: result.ayanamsha_degrees,
+    solarMethod: result.solar_times.method,
+    provider: {
+      engine: result.metadata.engine,
+      astronomicalProvider: result.metadata.astronomical_provider,
+      ephemerisModel: result.metadata.ephemeris_model,
+    },
+  };
+}
+
+export function isAstroProviderConfigured(): boolean {
+  return Boolean(Deno.env.get("ASTRO_API_URL")?.trim());
+}

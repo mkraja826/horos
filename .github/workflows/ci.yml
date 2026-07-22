@@ -31,6 +31,12 @@ jobs:
       - name: Lint Expo app
         run: npm run lint
 
+      - name: Parse private-beta PowerShell preflight
+        shell: pwsh
+        run: |
+          $content = Get-Content ./scripts/verify-private-beta-local.ps1 -Raw
+          [scriptblock]::Create($content) | Out-Null
+
       - name: Set up Deno
         uses: denoland/setup-deno@v2
         with:

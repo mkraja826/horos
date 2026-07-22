@@ -1,7 +1,11 @@
 import type {
   AstroPanchangaResponse,
   AstroPositionsResponse,
+  AstroPredictionResponse,
+  BirthDetailsRow,
   ChartResult,
+  HoroscopePrediction,
+  Period,
   ProfileInput,
 } from "./types.ts";
 
@@ -274,6 +278,55 @@ export async function calculatePanchang(
       ephemerisModel: result.metadata.ephemeris_model,
       requestId: response.requestId,
     },
+  };
+}
+
+export function localDateTimeInTimezone(timezone: string, date = new Date()): string {
+  const values = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, part.value]),
+  );
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}:${values.second}`;
+}
+
+export async function calculatePrediction(
+  birth: BirthDetailsRow,
+  period: Period,
+  astroConsumerId: string,
+  now = new Date(),
+): Promise<HoroscopePrediction> {
+  const response = await astroRequest<AstroPredictionResponse>(
+    "/v1/classical/varahamihira_v1/prediction",
+    {
+      birth: {
+        local_datetime: `${birth.date_of_birth}T${birth.time_of_birth}:00`,
+        timezone: birth.timezone,
+        latitude: birth.latitude,
+        longitude: birth.longitude,
+        altitude_meters: birth.altitude_meters ?? 0,
+      },
+      as_of: {
+        local_datetime: localDateTimeInTimezone(birth.timezone, now),
+        timezone: birth.timezone,
+      },
+      period,
+      calculation_profile: CALCULATION_PROFILE,
+    },
+    astroConsumerId,
+  );
+  return {
+    ...response.payload,
+    generatedAt: now.toISOString(),
+    calculationMode: "provider",
+    provider: { requestId: response.requestId },
   };
 }
 

@@ -45,7 +45,7 @@ export type ReadingSection = {
   premium?: boolean;
 };
 
-export type HoroscopeReading = {
+export type EditorialHoroscopeReading = {
   period: "daily" | "weekly" | "monthly";
   label: string;
   summary: string;
@@ -61,6 +61,45 @@ export type HoroscopeReading = {
   generatedAt: string;
   calculationMode: "provider" | "estimated" | "editorial";
 };
+
+export type PredictionEvidence = {
+  evidence_id: string;
+  domain: string;
+  statement: string;
+  polarity: "supporting" | "challenging" | "contextual";
+  weight: number;
+  source_rule_ids: string[];
+  source_kind: "classical" | "convention" | string;
+  reason: string;
+};
+
+export type PredictionDomainResult = {
+  domain: string;
+  outlook: "favourable" | "mixed" | "challenging" | "insufficient" | "insufficient_evidence";
+  strength: string;
+  supporting_score: number;
+  challenging_score: number;
+  net_score: number;
+  statement: string;
+  supporting_factors: PredictionEvidence[];
+  challenging_factors: PredictionEvidence[];
+  contextual_factors: PredictionEvidence[];
+};
+
+export type ProviderHoroscopeReading = {
+  engine_version: string;
+  calculation_profile: string;
+  classical_profile: string;
+  period: "daily" | "weekly" | "monthly";
+  as_of: string;
+  results: PredictionDomainResult[];
+  disclaimer: string;
+  generatedAt: string;
+  calculationMode: "provider";
+  provider: { requestId: string };
+};
+
+export type HoroscopeReading = EditorialHoroscopeReading | ProviderHoroscopeReading;
 
 export type Panchang = {
   date: string;

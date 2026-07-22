@@ -1,6 +1,7 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$Identifier
+    [string]$Identifier,
+    [string]$ProfilePath
 )
 
 Set-StrictMode -Version Latest
@@ -128,5 +129,86 @@ if ($refresh.Status -ne 200 -or -not $refresh.Body.token) {
     throw "Valid session refresh failed with status $($refresh.Status)."
 }
 Write-Host "ValidRefresh=PASS"
+
+if ($ProfilePath) {
+    if (-not (Test-Path -LiteralPath $ProfilePath -PathType Leaf)) {
+        throw "Profile file does not exist: $ProfilePath"
+    }
+
+    try {
+        $profileInput = Get-Content -LiteralPath $ProfilePath -Raw | ConvertFrom-Json
+    }
+    catch {
+        throw "Profile file must contain valid JSON: $($_.Exception.Message)"
+    }
+
+    $requiredProfileFields = @(
+        "fullName",
+        "language",
+        "notificationTime",
+        "dateOfBirth",
+        "timeOfBirth",
+        "birthPlace",
+        "timezone",
+        "latitude",
+        "longitude"
+    )
+    foreach ($field in $requiredProfileFields) {
+        if ($null -eq $profileInput.$field -or "$($profileInput.$field)".Trim().Length -eq 0) {
+            throw "Profile file is missing required field: $field"
+        }
+    }
+
+    Write-Warning "This will create or update a REAL production profile and claim its Horos trial."
+    $confirmation = Read-Host "Type CREATE to continue"
+    if ($confirmation -cne "CREATE") {
+        throw "Real profile flow cancelled."
+    }
+
+    $profileResult = Invoke-Api `
+        -Method POST `
+        -Path "/profile/create" `
+        -Headers $authorization `
+        -Body $profileInput
+
+    if ($profileResult.Status -ne 201) {
+        $details = $profileResult.Body | ConvertTo-Json -Depth 10 -Compress
+        throw "Profile creation failed: HTTP $($profileResult.Status) $details"
+    }
+    Write-Host "RealProfileCreate=PASS"
+
+    $profile = Invoke-Api `
+        -Method GET `
+        -Path "/profile/me" `
+        -Headers $authorization
+
+    if ($profile.Status -ne 200 -or -not $profile.Body.profile) {
+        $details = $profile.Body | ConvertTo-Json -Depth 10 -Compress
+        throw "Stored profile verification failed: HTTP $($profile.Status) $details"
+    }
+    Write-Host "RealProfileRead=PASS"
+
+    $subscription = Invoke-Api `
+        -Method GET `
+        -Path "/subscription/status" `
+        -Headers $authorization
+
+    if ($subscription.Status -ne 200) {
+        throw "Subscription/trial status failed with HTTP $($subscription.Status)."
+    }
+    Write-Host "TrialStatus=PASS"
+
+    $horoscope = Invoke-Api `
+        -Method GET `
+        -Path "/horoscope/daily" `
+        -Headers $authorization
+
+    if ($horoscope.Status -ne 200 -or $null -eq $horoscope.Body) {
+        $details = $horoscope.Body | ConvertTo-Json -Depth 10 -Compress
+        throw "Daily horoscope failed: HTTP $($horoscope.Status) $details"
+    }
+    Write-Host "DailyHoroscope=PASS"
+    Write-Host "HOROS_REAL_USER_FLOW=PASS"
+}
 
 Write-Host "HOROS_HOSTED_E2E=PASS"

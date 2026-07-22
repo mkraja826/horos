@@ -69,6 +69,12 @@ try {
         throw "Sensitive local files are tracked by Git: $($trackedSensitive -join ', ')"
     }
 
+    Write-Host "Running Horos user-flow contract tests..."
+    npx --yes deno test `
+        --config=./supabase/functions/horos-api/deno.json `
+        ./supabase/functions/horos-api/user_flow_test.ts
+    Assert-ExitCode "Horos user-flow contract tests failed."
+
     if (-not (Test-DockerReady)) {
         throw "Docker Desktop is not ready. Open Docker Desktop and rerun this script."
     }
@@ -183,7 +189,7 @@ try {
     }
 
     Write-Host "Horos private-beta local preflight passed."
-    Write-Host "This proves the protected local adapter path only; hosted Edge Function deployment remains a separate gate."
+    Write-Host "This proves the local user-flow contract and protected Astro adapter path; hosted auth, persistence, and Edge Function deployment remain separate gates."
 }
 finally {
     Pop-Location

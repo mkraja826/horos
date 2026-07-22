@@ -2,6 +2,7 @@ import {
   buildAstroProviderHeaders,
   formatTithiLabel,
   localDateTimeInTimezone,
+  normalizeBirthTime,
 } from "./astro.ts";
 
 function assertEquals(actual: unknown, expected: unknown, message: string): void {
@@ -71,4 +72,11 @@ Deno.test("Prediction query instant is serialized in the birth timezone", () => 
     "2026-07-23T12:00:15",
     "local prediction instant",
   );
+});
+
+
+Deno.test("Prediction birth time accepts profile input and PostgreSQL time formats", () => {
+  assertEquals(normalizeBirthTime("10:28"), "10:28:00", "profile HH:MM");
+  assertEquals(normalizeBirthTime("10:28:00"), "10:28:00", "database HH:MM:SS");
+  assertEquals(normalizeBirthTime("10:28:00.000000"), "10:28:00", "database fractional seconds");
 });

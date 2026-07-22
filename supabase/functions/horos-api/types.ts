@@ -128,3 +128,44 @@ export type AstroPanchangaResponse = {
     ephemeris_model?: string | null;
   };
 };
+
+
+export type PredictionEvidence = {
+  evidence_id: string;
+  domain: string;
+  statement: string;
+  polarity: "supporting" | "challenging" | "contextual";
+  weight: number;
+  source_rule_ids: string[];
+  source_kind: string;
+  reason: string;
+};
+
+export type PredictionDomainResult = {
+  domain: string;
+  outlook: "favourable" | "mixed" | "challenging" | "insufficient";
+  strength: string;
+  supporting_score: number;
+  challenging_score: number;
+  net_score: number;
+  statement: string;
+  supporting_factors: PredictionEvidence[];
+  challenging_factors: PredictionEvidence[];
+  contextual_factors: PredictionEvidence[];
+};
+
+export type AstroPredictionResponse = {
+  engine_version: string;
+  calculation_profile: string;
+  classical_profile: string;
+  period: Period;
+  as_of: string;
+  results: PredictionDomainResult[];
+  disclaimer: string;
+};
+
+export type HoroscopePrediction = AstroPredictionResponse & {
+  generatedAt: string;
+  calculationMode: "provider";
+  provider: { requestId: string };
+};

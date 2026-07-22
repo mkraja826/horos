@@ -1,4 +1,9 @@
-import { AstroProviderError, calculatePanchang, isAstroProviderConfigured } from "./astro.ts";
+import {
+  AstroProviderError,
+  calculatePanchang,
+  calculatePrediction,
+  isAstroProviderConfigured,
+} from "./astro.ts";
 import { refreshSession, requestOtp, verifyOtp } from "./auth.ts";
 import {
   adminClient,
@@ -11,7 +16,6 @@ import {
   ResponseError,
 } from "./db.ts";
 import { createProfile, deleteAccount, readProfile, updateProfile } from "./profiles.ts";
-import { generateEditorialReading } from "./readings.ts";
 import {
   processRevenueCatWebhook,
   verifyRevenueCat,
@@ -71,19 +75,6 @@ function validatePeriod(value: string): Period {
   throw new ResponseError("That horoscope period is not supported.", 404, "INVALID_PERIOD");
 }
 
-function limitedReading(reading: ReturnType<typeof generateEditorialReading>) {
-  return {
-    ...reading,
-    luckyColor: undefined,
-    luckyColorHex: undefined,
-    luckyNumber: undefined,
-    mantra: undefined,
-    auspiciousTime: undefined,
-    cautionTime: undefined,
-    sections: reading.sections.filter((section) => !section.premium).slice(0, 1),
-  };
-}
-
 async function horoscope(userId: string, period: Period) {
   const [rows, subscription] = await Promise.all([
     getProfileRows(userId),
@@ -109,7 +100,7 @@ async function horoscope(userId: string, period: Period) {
     .maybeSingle();
   if (cached.error) throw cached.error;
 
-  const reading = cached.data?.content_json ?? generateEditorialReading(period);
+  const reading = cached.data?.content_json ?? await calculatePrediction(rows.birth, period, userId);
   if (!cached.data) {
     const save = await adminClient.from("horoscope_cache").upsert(
       {
@@ -117,16 +108,14 @@ async function horoscope(userId: string, period: Period) {
         period,
         period_key: key,
         content_json: reading,
-        calculation_mode: "editorial",
+        calculation_mode: "provider",
         expires_at: cacheExpiry(period),
       },
       { onConflict: "user_id,period,period_key" },
     );
     if (save.error) throw save.error;
   }
-  return subscription.isPremium
-    ? reading
-    : limitedReading(reading as ReturnType<typeof generateEditorialReading>);
+  return reading;
 }
 
 async function registerNotification(userId: string, body: Record<string, unknown>) {

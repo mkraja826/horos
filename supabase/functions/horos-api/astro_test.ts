@@ -1,4 +1,8 @@
-import { buildAstroProviderHeaders, formatTithiLabel } from "./astro.ts";
+import {
+  buildAstroProviderHeaders,
+  formatTithiLabel,
+  localDateTimeInTimezone,
+} from "./astro.ts";
 
 function assertEquals(actual: unknown, expected: unknown, message: string): void {
   if (actual !== expected) {
@@ -57,5 +61,14 @@ Deno.test("Panchang Tithi label normalizes whitespace and casing safely", () => 
     formatTithiLabel("  Krishna  ", "krishna   Dwadashi"),
     "krishna Dwadashi",
     "normalized duplicate Paksha",
+  );
+});
+
+
+Deno.test("Prediction query instant is serialized in the birth timezone", () => {
+  assertEquals(
+    localDateTimeInTimezone("Asia/Kolkata", new Date("2026-07-23T06:30:15.000Z")),
+    "2026-07-23T12:00:15",
+    "local prediction instant",
   );
 });

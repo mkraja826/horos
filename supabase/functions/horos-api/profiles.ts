@@ -98,7 +98,7 @@ export function parseProfileInput(body: Record<string, unknown>): ProfileInput {
 
 export async function createProfile(user: User, body: Record<string, unknown>) {
   const input = parseProfileInput(body);
-  const chart = await calculateChart(input);
+  const chart = await calculateChart(input, user.id);
 
   const profileResult = await adminClient.from("profiles").upsert(
     {

@@ -38,3 +38,6 @@ jobs:
 
       - name: Type-check Supabase Edge Function
         run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/index.ts
+
+      - name: Test Astro gateway contract
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_test.ts

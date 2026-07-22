@@ -75,6 +75,7 @@ export type ChartResult = {
     engine: string;
     astronomicalProvider: string;
     ephemerisModel?: string | null;
+    requestId?: string;
   };
   rawPositions: unknown;
 };

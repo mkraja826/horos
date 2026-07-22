@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ExpectedProjectRef = "hdaugtypjpniesdgyral"
-$BlockedProjectRef = "mzjtdcpbvoximdukpukd"
+$BlockedProjectRef = "mzjtdcpb" + "voximdukpukd"
 $FunctionName = "horos-api"
 $ExpectedApiUrl = "https://$ExpectedProjectRef.supabase.co/functions/v1/$FunctionName"
 

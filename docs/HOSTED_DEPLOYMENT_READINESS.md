@@ -129,9 +129,9 @@ The EAS project ID and RevenueCat public SDK keys remain external configuration 
 The minimum ordered migration set is:
 
 ```text
-20260721060000_horos_core_schema_v1.sql
-20260721062000_atomic_trial_claim_v1.sql
-20260721063000_explicit_service_only_policies_v1.sql
+20260721053407_horos_core_schema_v1.sql
+20260721054513_atomic_trial_claim_v1.sql
+20260721061912_explicit_service_only_policies_v1.sql
 ```
 
 Repository presence does not prove remote application. Before deployment, verify the migration history of only project `hdaugtypjpniesdgyral`. Do not apply or inspect migrations in any unrelated project.

@@ -21,9 +21,9 @@ $RequiredEdgeVariables = @(
 )
 
 $RequiredMigrations = @(
-    "supabase/migrations/20260721060000_horos_core_schema_v1.sql",
-    "supabase/migrations/20260721062000_atomic_trial_claim_v1.sql",
-    "supabase/migrations/20260721063000_explicit_service_only_policies_v1.sql"
+    "supabase/migrations/20260721053407_horos_core_schema_v1.sql",
+    "supabase/migrations/20260721054513_atomic_trial_claim_v1.sql",
+    "supabase/migrations/20260721061912_explicit_service_only_policies_v1.sql"
 )
 
 function Assert-File {

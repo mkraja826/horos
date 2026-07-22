@@ -41,3 +41,6 @@ jobs:
 
       - name: Test Astro gateway contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_test.ts
+
+      - name: Type-check local Astro adapter smoke
+        run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_local_smoke.ts

@@ -17,6 +17,24 @@ function Assert-ExitCode {
     }
 }
 
+function Test-DockerReady {
+    # Windows PowerShell converts native stderr into error records. Docker Desktop
+    # may print harmless host-capability warnings to stderr even when `docker info`
+    # succeeds, so evaluate the native exit code with non-terminating handling and
+    # suppress the warning text without weakening the rest of this script.
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        docker info *> $null
+        $dockerExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    return $dockerExitCode -eq 0
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 
@@ -51,8 +69,7 @@ try {
         throw "Sensitive local files are tracked by Git: $($trackedSensitive -join ', ')"
     }
 
-    docker info *> $null
-    if ($LASTEXITCODE -ne 0) {
+    if (-not (Test-DockerReady)) {
         throw "Docker Desktop is not ready. Open Docker Desktop and rerun this script."
     }
 

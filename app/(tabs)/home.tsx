@@ -62,6 +62,47 @@ export default function HomeScreen() {
         <LoadingCard />
       ) : reading.isError || !reading.data ? (
         <QueryError onRetry={() => reading.refetch()} />
+      ) : "results" in reading.data ? (
+        <>
+          <Card
+            style={{
+              backgroundColor: colors.secondary,
+              borderColor: colors.secondary,
+              padding: spacing.xl,
+              overflow: "hidden",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+              <View
+                style={{ width: 46, height: 46, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+              >
+                <AppIcon name="sun" size={24} color="#F2C66D" />
+              </View>
+              <AppText variant="label" color="#EADFC8">Current calculated outlook</AppText>
+            </View>
+            <AppText variant="title" color="#FFF8E9">
+              {reading.data.results[0]?.domain === "career" ? "Career & work" : "Current reading"}
+            </AppText>
+            <AppText color="#E8DFD2">
+              {reading.data.results[0]?.statement ?? "There is not enough directional evidence for a conclusion."}
+            </AppText>
+            <AppText variant="caption" color="#DCD3C2">
+              {reading.data.results[0]
+                ? `${reading.data.results[0].outlook.replace("_evidence", "").replace("_", " ")} · ${reading.data.results[0].strength} strength`
+                : "Insufficient evidence"}
+            </AppText>
+            <AppButton label="View evidence and disclaimer" variant="secondary" onPress={() => router.push("/daily")} />
+          </Card>
+          <Card>
+            <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "flex-start" }}>
+              <IconBadge name="shield" />
+              <View style={{ flex: 1, gap: spacing.xs }}>
+                <AppText variant="label">Interpretation boundary</AppText>
+                <AppText muted numberOfLines={4}>{reading.data.disclaimer}</AppText>
+              </View>
+            </View>
+          </Card>
+        </>
       ) : (
         <>
           <Card
@@ -132,7 +173,8 @@ export default function HomeScreen() {
             </View>
           </Card>
         </>
-      )}
+
+      )      )}
 
       <View style={{ gap: spacing.md }}>
         <AppText variant="heading">Look ahead</AppText>

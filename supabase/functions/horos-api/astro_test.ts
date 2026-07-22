@@ -1,4 +1,4 @@
-import { buildAstroProviderHeaders } from "./astro.ts";
+import { buildAstroProviderHeaders, formatTithiLabel } from "./astro.ts";
 
 function assertEquals(actual: unknown, expected: unknown, message: string): void {
   if (actual !== expected) {
@@ -34,4 +34,28 @@ Deno.test("Astro provider headers do not expose Supabase server credentials", ()
   if (serialized.includes("sb_secret_") || serialized.includes("service_role")) {
     throw new Error("Supabase server credentials must never be forwarded to the Astro API.");
   }
+});
+
+Deno.test("Panchang Tithi label does not repeat an included Paksha", () => {
+  assertEquals(
+    formatTithiLabel("Krishna", "Krishna Dwadashi"),
+    "Krishna Dwadashi",
+    "included Paksha",
+  );
+});
+
+Deno.test("Panchang Tithi label adds a missing Paksha", () => {
+  assertEquals(
+    formatTithiLabel("Shukla", "Navami"),
+    "Shukla Navami",
+    "missing Paksha",
+  );
+});
+
+Deno.test("Panchang Tithi label normalizes whitespace and casing safely", () => {
+  assertEquals(
+    formatTithiLabel("  Krishna  ", "krishna   Dwadashi"),
+    "krishna Dwadashi",
+    "normalized duplicate Paksha",
+  );
 });

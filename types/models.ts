@@ -81,6 +81,9 @@ export type PredictionDomainResult = {
   challenging_score: number;
   net_score: number;
   statement: string;
+  advisory: string;
+  favourable_timing: string | null;
+  challenging_timing: string | null;
   supporting_factors: PredictionEvidence[];
   challenging_factors: PredictionEvidence[];
   contextual_factors: PredictionEvidence[];

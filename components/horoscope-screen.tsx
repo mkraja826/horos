@@ -28,6 +28,13 @@ type HoroscopeScreenProps = {
 const domainTitles: Record<string, string> = {
   overall: "Overall outlook",
   career: "Career & work",
+  money_resources: "Money & resources",
+  relationships_marriage: "Relationships & marriage",
+  family_home: "Family & home",
+  education_creativity: "Education & creativity",
+  wellbeing: "Wellbeing tendencies",
+  travel_change: "Travel & change",
+  spirituality: "Spirituality",
 };
 
 function outlookLabel(outlook: PredictionDomainResult["outlook"]): string {
@@ -171,6 +178,16 @@ export function HoroscopeScreen({
               </View>
 
               <AppText>{result.statement}</AppText>
+              <View style={{ gap: spacing.sm }}>
+                <AppText variant="label">Advisory</AppText>
+                <AppText>{result.advisory}</AppText>
+                {result.favourable_timing ? (
+                  <AppText color={colors.success}>{result.favourable_timing}</AppText>
+                ) : null}
+                {result.challenging_timing ? (
+                  <AppText color={colors.maroon}>{result.challenging_timing}</AppText>
+                ) : null}
+              </View>
               <EvidenceList title="Supporting factors" evidence={result.supporting_factors} color={colors.success} />
               <EvidenceList title="Challenging factors" evidence={result.challenging_factors} color={colors.maroon} />
               <EvidenceList title="Context and limitations" evidence={result.contextual_factors} color={colors.warning} />

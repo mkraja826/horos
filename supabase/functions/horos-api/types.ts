@@ -143,12 +143,15 @@ export type PredictionEvidence = {
 
 export type PredictionDomainResult = {
   domain: string;
-  outlook: "favourable" | "mixed" | "challenging" | "insufficient";
+  outlook: "favourable" | "mixed" | "challenging" | "insufficient_evidence";
   strength: string;
   supporting_score: number;
   challenging_score: number;
   net_score: number;
   statement: string;
+  advisory: string;
+  favourable_timing: string | null;
+  challenging_timing: string | null;
   supporting_factors: PredictionEvidence[];
   challenging_factors: PredictionEvidence[];
   contextual_factors: PredictionEvidence[];

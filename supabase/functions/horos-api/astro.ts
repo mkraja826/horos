@@ -212,6 +212,22 @@ function formatClock(isoValue: string, timezone: string): string {
   }).format(new Date(isoValue));
 }
 
+export function formatTithiLabel(paksha: string, name: string): string {
+  const normalizedPaksha = paksha.trim().replace(/\s+/g, " ");
+  const normalizedName = name.trim().replace(/\s+/g, " ");
+
+  if (!normalizedPaksha) return normalizedName;
+  if (!normalizedName) return normalizedPaksha;
+
+  const lowerPaksha = normalizedPaksha.toLowerCase();
+  const lowerName = normalizedName.toLowerCase();
+  if (lowerName === lowerPaksha || lowerName.startsWith(`${lowerPaksha} `)) {
+    return normalizedName;
+  }
+
+  return `${normalizedPaksha} ${normalizedName}`;
+}
+
 export async function calculatePanchang(
   input: {
     localDate: string;
@@ -242,7 +258,7 @@ export async function calculatePanchang(
     date: result.local_date,
     location: input.locationLabel,
     vara: result.vara.name,
-    tithi: `${result.tithi.paksha} ${result.tithi.name}`.trim(),
+    tithi: formatTithiLabel(result.tithi.paksha, result.tithi.name),
     nakshatra: `${result.nakshatra.name} – Pada ${result.nakshatra.pada}`,
     yoga: result.yoga.name,
     karana: result.karana.name,

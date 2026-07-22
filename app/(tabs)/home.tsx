@@ -173,8 +173,7 @@ export default function HomeScreen() {
             </View>
           </Card>
         </>
-
-      )      )}
+      )}
 
       <View style={{ gap: spacing.md }}>
         <AppText variant="heading">Look ahead</AppText>

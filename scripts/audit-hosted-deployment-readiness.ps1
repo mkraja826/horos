@@ -100,7 +100,19 @@ try {
         throw "The Horos working tree is not clean. Commit or stash local changes before auditing."
     }
 
-    $branch = (git branch --show-current).Trim()
+    $branchOutput = @(git branch --show-current)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to read the current Git branch."
+    }
+    $branch = if ($branchOutput.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace([string]$branchOutput[0])) {
+        ([string]$branchOutput[0]).Trim()
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:GITHUB_HEAD_REF)) {
+        $env:GITHUB_HEAD_REF.Trim()
+    }
+    else {
+        "detached-head"
+    }
     $head = (git rev-parse --short HEAD).Trim()
 
     $requiredFiles = @(

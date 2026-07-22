@@ -133,9 +133,10 @@ export function subscriptionState(row: SubscriptionRow | null, nowMilliseconds =
   const trialActive = row?.status === "trial" && trialEnd > nowMilliseconds;
   const paidActive = row?.status === "active" && (!subscriptionEnd || subscriptionEnd > nowMilliseconds);
   const end = trialActive ? trialEnd : paidActive ? subscriptionEnd : 0;
+  const inactiveStatus = row?.status === "cancelled" ? "cancelled" : "expired";
   return {
     access: trialActive ? "trial" : paidActive ? "active" : "limited",
-    status: trialActive ? "trial" : paidActive ? "active" : row?.status ?? "expired",
+    status: trialActive ? "trial" : paidActive ? "active" : inactiveStatus,
     trialEndsAt: row?.trial_end_date ?? undefined,
     subscriptionEndsAt: row?.subscription_end_date ?? undefined,
     daysRemaining: end ? Math.max(0, Math.ceil((end - nowMilliseconds) / 86_400_000)) : 0,

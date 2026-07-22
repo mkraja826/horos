@@ -12,13 +12,7 @@ Expo mobile app
             -> durable Astro usage metering in hdaugtypjpniesdgyral
 ```
 
-The blocked MDMS project reference is:
-
-```text
-mzjtdcpbvoximdukpukd
-```
-
-It must never appear in Horos deployment commands, configuration, secrets, or documentation.
+The unrelated MDMS project must never appear in Horos deployment commands, configuration, secrets, or documentation.
 
 ## Static repository gate
 
@@ -140,7 +134,7 @@ The minimum ordered migration set is:
 20260721063000_explicit_service_only_policies_v1.sql
 ```
 
-Repository presence does not prove remote application. Before deployment, verify the migration history of only project `hdaugtypjpniesdgyral`. Do not apply or inspect migrations in `mzjtdcpbvoximdukpukd`.
+Repository presence does not prove remote application. Before deployment, verify the migration history of only project `hdaugtypjpniesdgyral`. Do not apply or inspect migrations in any unrelated project.
 
 Important controls:
 

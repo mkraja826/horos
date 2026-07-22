@@ -1,6 +1,11 @@
 import { createClient, type User } from "supabase";
 
+import { ResponseError } from "./errors.ts";
 import type { BirthDetailsRow, Period, ProfileRow, SubscriptionRow } from "./types.ts";
+import { subscriptionState } from "./user_flow.ts";
+
+export { ResponseError } from "./errors.ts";
+export { subscriptionState } from "./user_flow.ts";
 
 function requiredEnv(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -33,13 +38,6 @@ export async function requireUser(request: Request): Promise<User> {
     throw new ResponseError("Please sign in again.", 401, "UNAUTHORIZED");
   }
   return data.user;
-}
-
-export class ResponseError extends Error {
-  constructor(message: string, public status: number, public code: string) {
-    super(message);
-    this.name = "ResponseError";
-  }
 }
 
 export function normalizeIdentifier(value: string): string {
@@ -106,25 +104,6 @@ export function profileJson(
     lagna: rows.birth.lagna,
     calculationProfile: rows.birth.calculation_profile,
     calculationMode: rows.birth.calculation_mode,
-  };
-}
-
-export function subscriptionState(row: SubscriptionRow | null) {
-  const now = Date.now();
-  const trialEnd = row?.trial_end_date ? new Date(row.trial_end_date).getTime() : 0;
-  const subscriptionEnd = row?.subscription_end_date
-    ? new Date(row.subscription_end_date).getTime()
-    : 0;
-  const trialActive = row?.status === "trial" && trialEnd > now;
-  const paidActive = row?.status === "active" && (!subscriptionEnd || subscriptionEnd > now);
-  const end = trialActive ? trialEnd : paidActive ? subscriptionEnd : 0;
-  return {
-    access: trialActive ? "trial" : paidActive ? "active" : "limited",
-    status: trialActive ? "trial" : paidActive ? "active" : row?.status ?? "expired",
-    trialEndsAt: row?.trial_end_date ?? undefined,
-    subscriptionEndsAt: row?.subscription_end_date ?? undefined,
-    daysRemaining: end ? Math.max(0, Math.ceil((end - now) / 86_400_000)) : 0,
-    isPremium: trialActive || paidActive,
   };
 }
 

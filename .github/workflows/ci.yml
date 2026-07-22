@@ -31,6 +31,10 @@ jobs:
       - name: Lint Expo app
         run: npm run lint
 
+      - name: Audit hosted deployment repository readiness
+        shell: pwsh
+        run: ./scripts/audit-hosted-deployment-readiness.ps1
+
       - name: Parse private-beta PowerShell preflight
         shell: pwsh
         run: |

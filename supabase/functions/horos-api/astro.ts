@@ -281,6 +281,14 @@ export async function calculatePanchang(
   };
 }
 
+export function normalizeBirthTime(value: string): string {
+  const normalized = value.trim();
+  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(normalized)) return `${normalized}:00`;
+  const match = normalized.match(/^(([01]\d|2[0-3]):[0-5]\d:[0-5]\d)(?:\.\d+)?$/);
+  if (match) return match[1];
+  throw new AstroProviderError("The stored birth time is invalid.", 500, undefined, "INVALID_STORED_BIRTH_TIME");
+}
+
 export function localDateTimeInTimezone(timezone: string, date = new Date()): string {
   const values = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {
@@ -307,7 +315,7 @@ export async function calculatePrediction(
     "/v1/classical/varahamihira_v1/prediction",
     {
       birth: {
-        local_datetime: `${birth.date_of_birth}T${birth.time_of_birth}:00`,
+        local_datetime: `${birth.date_of_birth}T${normalizeBirthTime(birth.time_of_birth)}`,
         timezone: birth.timezone,
         latitude: birth.latitude,
         longitude: birth.longitude,

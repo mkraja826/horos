@@ -1,0 +1,48 @@
+name: Temporary pinned lock regeneration
+
+on:
+  push:
+    branches:
+      - build/pin-mobile-toolchain-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pinned-lock-regeneration
+  cancel-in-progress: false
+
+jobs:
+  update-lock:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: build/pin-mobile-toolchain-v1
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.4"
+          cache: npm
+
+      - name: Set up pinned npm
+        run: npm install --global npm@10.8.2
+
+      - name: Regenerate lock metadata only
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Commit synchronized lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "build: synchronize pinned package lock"
+          git push origin HEAD:build/pin-mobile-toolchain-v1

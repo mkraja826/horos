@@ -19,6 +19,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit && npm run typecheck --workspace worker",
     "verify:reproducible": "node scripts/verify-reproducible-toolchain.mjs",
+    "verify:hosted-beta": "node scripts/verify-hosted-private-beta.mjs",
     "worker:dev": "npm run dev --workspace worker",
     "worker:deploy": "npm run deploy --workspace worker",
     "worker:db:local": "npm run db:local --workspace worker",

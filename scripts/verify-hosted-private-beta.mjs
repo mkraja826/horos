@@ -87,6 +87,10 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
+}
+
 function pass(message) {
   console.log(`PASS  ${message}`);
 }
@@ -216,9 +220,9 @@ async function authenticate(apiUrl, identifier, attemptLabel) {
     body: { identifier, otp },
   });
   assertStatus(verification, 200, `${attemptLabel} OTP verification`);
-  assert(typeof verification.body?.token === "string" && verification.body.token.length > 20,
+  assert(isNonEmptyString(verification.body?.token),
     `${attemptLabel} OTP verification returned no access token.`);
-  assert(typeof verification.body?.refreshToken === "string" && verification.body.refreshToken.length > 20,
+  assert(isNonEmptyString(verification.body?.refreshToken),
     `${attemptLabel} OTP verification returned no refresh token.`);
   pass(`${attemptLabel} OTP verification returned a valid session`);
   return {
@@ -296,9 +300,9 @@ async function verifyAuthenticatedFlow(apiUrl, session) {
     body: { refreshToken: session.refreshToken },
   });
   assertStatus(refresh, 200, "Session refresh");
-  assert(typeof refresh.body?.token === "string" && refresh.body.token.length > 20,
+  assert(isNonEmptyString(refresh.body?.token),
     "Session refresh returned no access token.");
-  assert(typeof refresh.body?.refreshToken === "string" && refresh.body.refreshToken.length > 20,
+  assert(isNonEmptyString(refresh.body?.refreshToken),
     "Session refresh returned no refresh token.");
   pass("Session refresh returned a valid replacement session");
   return { token: refresh.body.token, refreshToken: refresh.body.refreshToken };

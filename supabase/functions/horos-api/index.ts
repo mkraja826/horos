@@ -16,6 +16,11 @@ import {
   requireUser,
   ResponseError,
 } from "./db.ts";
+import {
+  assertPredictionContract,
+  PREDICTION_CONTRACT,
+  predictionCacheColumns,
+} from "./prediction_contract.ts";
 import { createProfile, deleteAccount, readProfile, updateProfile } from "./profiles.ts";
 import {
   processRevenueCatWebhook,
@@ -78,18 +83,40 @@ async function horoscope(userId: string, period: Period) {
   }
 
   const key = periodKey(period, rows.birth.timezone);
+  const contract = predictionCacheColumns();
   const cached = await adminClient
     .from("horoscope_cache")
     .select("content_json")
     .eq("user_id", userId)
     .eq("period", period)
     .eq("period_key", key)
+    .eq("calculation_profile", contract.calculation_profile)
+    .eq("classical_profile", contract.classical_profile)
+    .eq("engine_version", contract.engine_version)
+    .eq("prediction_contract_version", contract.prediction_contract_version)
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
   if (cached.error) throw cached.error;
 
-  const reading = cached.data?.content_json ?? await calculatePrediction(rows.birth, period, userId);
-  if (!cached.data) {
+  let reading = cached.data?.content_json;
+  if (!reading) {
+    const providerReading = await calculatePrediction(rows.birth, period, userId);
+    try {
+      assertPredictionContract(providerReading, period);
+    } catch (error) {
+      throw new AstroProviderError(
+        "The Astro prediction response does not match the pinned Horos contract.",
+        502,
+        undefined,
+        "PREDICTION_CONTRACT_MISMATCH",
+        providerReading.provider.requestId,
+      );
+    }
+
+    reading = {
+      ...providerReading,
+      predictionContractVersion: PREDICTION_CONTRACT.responseVersion,
+    };
     const save = await adminClient.from("horoscope_cache").upsert(
       {
         user_id: userId,
@@ -97,9 +124,13 @@ async function horoscope(userId: string, period: Period) {
         period_key: key,
         content_json: reading,
         calculation_mode: "provider",
+        ...contract,
         expires_at: cacheExpiry(period, rows.birth.timezone),
       },
-      { onConflict: "user_id,period,period_key" },
+      {
+        onConflict:
+          "user_id,period,period_key,calculation_profile,classical_profile,engine_version,prediction_contract_version",
+      },
     );
     if (save.error) throw save.error;
   }

@@ -52,6 +52,9 @@ jobs:
       - name: Test Astro gateway contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_test.ts
 
+      - name: Test prediction cache contract
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/prediction_contract_test.ts
+
       - name: Test Horos user-flow contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/user_flow_test.ts
 

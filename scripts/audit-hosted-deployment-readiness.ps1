@@ -23,7 +23,12 @@ $RequiredEdgeVariables = @(
 $RequiredMigrations = @(
     "supabase/migrations/20260721053407_horos_core_schema_v1.sql",
     "supabase/migrations/20260721054513_atomic_trial_claim_v1.sql",
-    "supabase/migrations/20260721061912_explicit_service_only_policies_v1.sql"
+    "supabase/migrations/20260721061912_explicit_service_only_policies_v1.sql",
+    "supabase/migrations/20260723104500_revenuecat_webhook_ordering_v1.sql",
+    "supabase/migrations/20260723113000_atomic_profile_write_v1.sql",
+    "supabase/migrations/20260723120000_otp_abuse_controls_v1.sql",
+    "supabase/migrations/20260723124500_prediction_cache_contract_v1.sql",
+    "supabase/migrations/20260723130000_drop_legacy_horoscope_cache_identity_v1.sql"
 )
 
 function Assert-File {
@@ -124,6 +129,7 @@ try {
         "supabase/functions/horos-api/cors.ts",
         "supabase/functions/horos-api/db.ts",
         "supabase/functions/horos-api/astro.ts",
+        "supabase/functions/horos-api/prediction_contract.ts",
         "supabase/functions/horos-api/subscriptions.ts"
     ) + $RequiredMigrations
     foreach ($path in $requiredFiles) {
@@ -167,8 +173,9 @@ try {
     $corsSource = Get-Content "supabase/functions/horos-api/cors.ts" -Raw
     $dbSource = Get-Content "supabase/functions/horos-api/db.ts" -Raw
     $astroSource = Get-Content "supabase/functions/horos-api/astro.ts" -Raw
+    $predictionContractSource = Get-Content "supabase/functions/horos-api/prediction_contract.ts" -Raw
     $subscriptionSource = Get-Content "supabase/functions/horos-api/subscriptions.ts" -Raw
-    $edgeSource = "$indexSource`n$corsSource`n$dbSource`n$astroSource`n$subscriptionSource"
+    $edgeSource = "$indexSource`n$corsSource`n$dbSource`n$astroSource`n$predictionContractSource`n$subscriptionSource"
 
     foreach ($name in $RequiredEdgeVariables) {
         if (-not $edgeSource.Contains($name)) {
@@ -194,14 +201,26 @@ try {
     Assert-Contains $astroSource '"X-Astro-Consumer-ID"' "Astro consumer metering header is missing."
     Assert-Contains $astroSource '"X-Request-ID"' "Astro request idempotency header is missing."
 
+    Assert-Contains $predictionContractSource 'calculationProfile: "south_indian_drik_lahiri_jpl_de440s_v1"' "Prediction calculation profile is not pinned."
+    Assert-Contains $predictionContractSource 'classicalProfile: "varahamihira_v1"' "Prediction classical profile is not pinned."
+    Assert-Contains $predictionContractSource 'engineVersion: "horos_brihat_jataka_v2"' "Varahamihira engine version is not pinned."
+    Assert-Contains $predictionContractSource 'responseVersion: "classical_prediction_response_v1"' "Prediction response contract is not versioned."
+    Assert-Contains $indexSource 'prediction_contract_version' "Active cache lookup does not include the prediction contract version."
+    Assert-Contains $indexSource 'PREDICTION_CONTRACT_MISMATCH' "Unexpected provider versions are not rejected."
+
     $coreMigration = Get-Content $RequiredMigrations[0] -Raw
     $trialMigration = Get-Content $RequiredMigrations[1] -Raw
     $serviceOnlyMigration = Get-Content $RequiredMigrations[2] -Raw
+    $cacheContractMigration = Get-Content $RequiredMigrations[6] -Raw
+    $cacheCleanupMigration = Get-Content $RequiredMigrations[7] -Raw
     Assert-Contains $coreMigration "alter table public.profiles enable row level security" "Core profiles RLS is missing."
     Assert-Contains $coreMigration "alter table public.subscriptions enable row level security" "Subscriptions RLS is missing."
     Assert-Contains $trialMigration "grant execute on function public.claim_horos_trial_v1(uuid, text) to service_role" "Atomic trial claim is not service-role restricted."
     Assert-Contains $serviceOnlyMigration "trial_ledger_service_only" "Trial ledger default-deny policy is missing."
     Assert-Contains $serviceOnlyMigration "webhook_events_service_only" "Webhook event default-deny policy is missing."
+    Assert-Contains $cacheContractMigration "horoscope_cache_versioned_identity_key" "Versioned horoscope cache identity is missing."
+    Assert-Contains $cacheContractMigration "prediction_contract_version" "Prediction contract version is missing from the cache migration."
+    Assert-Contains $cacheCleanupMigration "horoscope_cache_user_id_period_period_key_key" "Legacy cache identity cleanup is missing."
 
     $eas = Get-Content "eas.json" -Raw | ConvertFrom-Json
     if ($eas.build.production.env.EXPO_PUBLIC_APP_ENV -ne "production") {

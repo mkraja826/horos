@@ -10,55 +10,18 @@ import {
   ResponseError,
   userIdentifier,
 } from "./db.ts";
+import { buildProfileWriteArguments } from "./profile_write.ts";
 import { parseProfileInput, parseProfileUpdate } from "./user_flow.ts";
 
 export async function createProfile(user: User, body: Record<string, unknown>) {
   const input = parseProfileInput(body);
   const chart = await calculateChart(input, user.id);
-
-  const profileResult = await adminClient.from("profiles").upsert(
-    {
-      user_id: user.id,
-      full_name: input.fullName,
-      gender: input.gender ?? null,
-      preferred_language: input.language,
-      current_city: input.currentCity ?? null,
-      notification_time: input.notificationTime,
-    },
-    { onConflict: "user_id" },
-  );
-  if (profileResult.error) throw profileResult.error;
-
-  const birthResult = await adminClient.from("birth_details").upsert(
-    {
-      user_id: user.id,
-      date_of_birth: input.dateOfBirth,
-      time_of_birth: input.timeOfBirth,
-      birth_place: input.birthPlace,
-      timezone: input.timezone,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      altitude_meters: input.altitudeMeters ?? 0,
-      rashi: chart.rashi,
-      nakshatra: chart.nakshatra,
-      lagna: chart.lagna,
-      chart_json: chart,
-      calculation_profile: chart.calculationProfile,
-      calculation_mode: "provider",
-    },
-    { onConflict: "user_id" },
-  );
-  if (birthResult.error) throw birthResult.error;
-
-  const clearCache = await adminClient.from("horoscope_cache").delete().eq("user_id", user.id);
-  if (clearCache.error) throw clearCache.error;
-
   const hash = await identifierHash(userIdentifier(user));
-  const trial = await adminClient.rpc("claim_horos_trial_v1", {
-    p_user_id: user.id,
-    p_identifier_hash: hash,
-  });
-  if (trial.error) throw trial.error;
+  const write = await adminClient.rpc(
+    "write_horos_profile_v1",
+    buildProfileWriteArguments(user.id, hash, input, chart),
+  );
+  if (write.error) throw write.error;
 
   const rows = await getProfileRows(user.id);
   if (!rows) throw new ResponseError("The profile could not be loaded after creation.", 500, "PROFILE_WRITE_FAILED");

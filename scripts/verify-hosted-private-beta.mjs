@@ -130,6 +130,10 @@ function assertStatus(response, expected, label) {
 }
 
 async function askText(question) {
+  if (!process.stdin.isTTY) {
+    throw new Error("Interactive terminal input is required. Pass --identifier explicitly and run from a terminal.");
+  }
+
   const readline = createInterface({ input: process.stdin, output: process.stdout });
   try {
     return (await readline.question(question)).trim();
@@ -140,7 +144,7 @@ async function askText(question) {
 
 async function askMasked(question) {
   if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
-    return askText(question);
+    throw new Error("OTP entry requires an interactive terminal.");
   }
 
   return new Promise((resolve, reject) => {

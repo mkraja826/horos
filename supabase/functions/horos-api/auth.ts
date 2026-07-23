@@ -1,4 +1,12 @@
-import { authClient, getProfileRows, normalizeIdentifier, profileJson, ResponseError } from "./db.ts";
+import {
+  adminClient,
+  authClient,
+  getProfileRows,
+  normalizeIdentifier,
+  profileJson,
+  ResponseError,
+} from "./db.ts";
+import { authRateScopeHashes, parseAuthRateLimitResult } from "./auth_rate.ts";
 
 function isEmail(identifier: string): boolean {
   return identifier.includes("@");
@@ -25,8 +33,59 @@ function validateIdentifier(value: unknown): string {
   return identifier;
 }
 
-export async function requestOtp(body: Record<string, unknown>) {
+async function enforceAuthRateLimit(
+  request: Request,
+  identifier: string,
+  action: "request" | "verify",
+) {
+  const hashes = await authRateScopeHashes(request, identifier);
+  const result = await adminClient.rpc("consume_horos_auth_limits_v1", {
+    p_identifier_hash: hashes.identifierHash,
+    p_ip_hash: hashes.ipHash,
+    p_action: action,
+  });
+  if (result.error) {
+    console.error("Auth rate-limit check failed", result.error);
+    throw new ResponseError(
+      "Sign-in protection is temporarily unavailable. Please try again.",
+      503,
+      "AUTH_RATE_LIMIT_UNAVAILABLE",
+    );
+  }
+
+  let state;
+  try {
+    state = parseAuthRateLimitResult(result.data);
+  } catch (error) {
+    console.error("Auth rate-limit response was invalid", error);
+    throw new ResponseError(
+      "Sign-in protection is temporarily unavailable. Please try again.",
+      503,
+      "AUTH_RATE_LIMIT_UNAVAILABLE",
+    );
+  }
+
+  if (!state.allowed) {
+    const retryAfterSeconds = Math.max(1, state.retryAfterSeconds);
+    throw new ResponseError(
+      "Too many verification attempts. Please try again later.",
+      429,
+      "AUTH_RATE_LIMITED",
+      {
+        retryAfterSeconds,
+        blockedBy: state.blockedBy,
+      },
+      { "Retry-After": String(retryAfterSeconds) },
+    );
+  }
+
+  return hashes;
+}
+
+export async function requestOtp(request: Request, body: Record<string, unknown>) {
   const identifier = validateIdentifier(body.identifier);
+  await enforceAuthRateLimit(request, identifier, "request");
+
   const result = isEmail(identifier)
     ? await authClient.auth.signInWithOtp({
         email: identifier,
@@ -38,8 +97,9 @@ export async function requestOtp(body: Record<string, unknown>) {
       });
 
   if (result.error) {
+    console.error("OTP delivery failed", result.error);
     throw new ResponseError(
-      result.error.message || "The verification code could not be sent.",
+      "The verification code could not be sent. Please try again later.",
       502,
       "OTP_DELIVERY_FAILED",
     );
@@ -47,23 +107,31 @@ export async function requestOtp(body: Record<string, unknown>) {
   return { requiresOtp: true as const, challengeId: crypto.randomUUID() };
 }
 
-export async function verifyOtp(body: Record<string, unknown>) {
+export async function verifyOtp(request: Request, body: Record<string, unknown>) {
   const identifier = validateIdentifier(body.identifier);
   const otp = typeof body.otp === "string" ? body.otp.trim() : "";
   if (!/^\d{6}$/.test(otp)) {
     throw new ResponseError("Enter the six-digit verification code.", 400, "OTP_INCORRECT");
   }
 
+  const hashes = await enforceAuthRateLimit(request, identifier, "verify");
   const result = isEmail(identifier)
     ? await authClient.auth.verifyOtp({ email: identifier, token: otp, type: "email" })
     : await authClient.auth.verifyOtp({ phone: identifier, token: otp, type: "sms" });
   if (result.error || !result.data.session || !result.data.user) {
+    console.error("OTP verification failed", result.error);
     throw new ResponseError(
-      result.error?.message || "That code is invalid or expired.",
+      "That code is invalid or expired.",
       400,
       "OTP_INCORRECT",
     );
   }
+
+  const reset = await adminClient.rpc("reset_horos_auth_verify_limits_v1", {
+    p_identifier_hash: hashes.identifierHash,
+    p_ip_hash: hashes.ipHash,
+  });
+  if (reset.error) console.error("Auth verification limits could not be reset", reset.error);
 
   const rows = await getProfileRows(result.data.user.id);
   return {

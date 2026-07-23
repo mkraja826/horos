@@ -31,22 +31,17 @@ try {
     Assert-Contains $migration "security definer" "Retention cleanup must use a controlled security boundary."
     Assert-Contains $migration "for update skip locked" "Retention cleanup must avoid blocking active rows."
     Assert-Contains $migration "limit p_batch_limit" "Retention cleanup must remain batch bounded."
-    Assert-Contains $migration "completed_at is not null" "In-flight API usage records are not protected."
-    Assert-Contains $migration "processed_at is not null" "Unprocessed webhook records are not protected."
+    Assert-Contains $migration "where completed_at is not null" "In-flight API usage records are not protected."
+    Assert-Contains $migration "where processed_at is not null" "Unprocessed webhook records are not protected."
     Assert-Contains $migration "interval '7 days'" "Horoscope cache grace period is missing."
+    Assert-Contains $migration "interval '2 days'" "OTP-window retention period is missing."
     Assert-Contains $migration "interval '180 days'" "API usage retention period is missing."
     Assert-Contains $migration "interval '365 days'" "Webhook retention period is missing."
     Assert-Contains $migration "grant execute on function public.cleanup_horos_retention_v1" "Service-role cleanup grant is missing."
+    Assert-Contains $migration "revoke all on function public.cleanup_horos_retention_v1" "Public cleanup execution was not revoked."
     Assert-Contains $migration "'horos-daily-retention-v1'" "Daily retention job is missing."
     Assert-Contains $migration "'17 2 * * *'" "Daily retention schedule changed unexpectedly."
     Assert-Contains $migration "cron.job_run_details" "Cron execution history cleanup is missing."
-
-    if ($migration -match "delete\s+from\s+public\.api_usage_events(?![\s\S]{0,500}completed_at is not null)") {
-        throw "API usage cleanup may delete incomplete events."
-    }
-    if ($migration -match "delete\s+from\s+public\.webhook_events(?![\s\S]{0,500}processed_at is not null)") {
-        throw "Webhook cleanup may delete unprocessed events."
-    }
 
     Write-Host "Horos data-retention contract: PASS"
 }

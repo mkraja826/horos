@@ -46,7 +46,7 @@ begin
   if p_ip_hash is null or p_ip_hash !~ '^[0-9a-f]{64}$' then
     raise exception 'Invalid auth IP hash';
   end if;
-  if p_action not in ('request', 'verify') then
+  if p_action is null or p_action not in ('request', 'verify') then
     raise exception 'Invalid auth rate-limit action';
   end if;
 
@@ -65,7 +65,7 @@ begin
           p_identifier_hash,
           'identifier'::text,
           case when p_action = 'request' then 86400 else 3600 end,
-          case when p_action = 'request' then 10 else 10 end,
+          10,
           case when p_action = 'request' then 'identifier_24h' else 'identifier_1h' end
         ),
         (

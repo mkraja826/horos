@@ -70,13 +70,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          health="$(curl --fail --silent --show-error "$BASE_URL/health")"
-          test "$(jq -r '.status' <<<"$health")" = "ok"
-          test "$(jq -r '.backend' <<<"$health")" = "supabase"
-          test "$(jq -r '.astroProvider' <<<"$health")" = "skyfield_jpl_de440s"
-          test "$(jq -r '.astroProviderConfigured' <<<"$health")" = "true"
+          health_code="$(curl --silent --show-error --output /tmp/health.json --write-out '%{http_code}' "$BASE_URL/health")"
+          echo "health_code=$health_code"
+          cat /tmp/health.json
+          echo
+          test "$health_code" = "200"
+          test "$(jq -r '.status' /tmp/health.json)" = "ok"
+          test "$(jq -r '.backend' /tmp/health.json)" = "supabase"
+          test "$(jq -r '.astroProvider' /tmp/health.json)" = "skyfield_jpl_de440s"
+          test "$(jq -r '.astroProviderConfigured' /tmp/health.json)" = "true"
 
           protected_code="$(curl --silent --show-error --output /tmp/protected.json --write-out '%{http_code}' "$BASE_URL/profile/me")"
+          echo "protected_code=$protected_code"
+          cat /tmp/protected.json
+          echo
           test "$protected_code" = "401"
           test "$(jq -r '.code' /tmp/protected.json)" = "UNAUTHORIZED"
 
@@ -86,6 +93,9 @@ jobs:
             --header 'Content-Type: application/json' \
             --data '{"event":{}}' \
             "$BASE_URL/subscription/webhook")"
+          echo "webhook_code=$webhook_code"
+          cat /tmp/webhook.json
+          echo
           test "$webhook_code" = "401"
           test "$(jq -r '.code' /tmp/webhook.json)" = "UNAUTHORIZED_WEBHOOK"
 

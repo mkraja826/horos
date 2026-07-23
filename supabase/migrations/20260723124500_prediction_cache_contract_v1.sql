@@ -45,9 +45,6 @@ alter table public.horoscope_cache
     check (char_length(prediction_contract_version) between 1 and 120);
 
 alter table public.horoscope_cache
-  drop constraint if exists horoscope_cache_user_id_period_period_key_key;
-
-alter table public.horoscope_cache
   add constraint horoscope_cache_versioned_identity_key unique (
     user_id,
     period,

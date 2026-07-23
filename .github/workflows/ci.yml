@@ -75,3 +75,17 @@ jobs:
 
       - name: Type-check local Astro adapter smoke
         run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_local_smoke.ts
+
+      - name: Verify hosted v12 public and protected boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api"
+
+          health_status="$(curl --silent --show-error --output health.json --write-out '%{http_code}' "$base/health")"
+          test "$health_status" = "200"
+          jq -e '.status == "ok" and .backend == "supabase" and .astroProviderConfigured == true' health.json >/dev/null
+
+          protected_status="$(curl --silent --show-error --output protected.json --write-out '%{http_code}' "$base/profile/me")"
+          test "$protected_status" = "401"
+          jq -e '.code == "UNAUTHORIZED"' protected.json >/dev/null

@@ -29,7 +29,7 @@
     "@tanstack/react-query": "5.101.1",
     "expo": "56.0.17",
     "expo-constants": "56.0.22",
-    "expo-device": "56.0.4",
+    "expo-device": "57.0.1",
     "expo-haptics": "56.0.3",
     "expo-image": "56.0.11",
     "expo-linear-gradient": "56.0.4",

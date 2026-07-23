@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - build/pin-mobile-toolchain-v1
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 concurrency:
-  group: pinned-lock-regeneration
+  group: pinned-lock-regeneration-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -34,7 +37,16 @@ jobs:
       - name: Regenerate lock metadata only
         run: npm install --package-lock-only --ignore-scripts
 
+      - name: Upload synchronized lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: synchronized-package-lock
+          path: package-lock.json
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Commit synchronized lockfile
+        if: github.event_name == 'pull_request'
         shell: bash
         run: |
           if git diff --quiet -- package-lock.json; then

@@ -58,6 +58,9 @@ jobs:
       - name: Test RevenueCat webhook contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/revenuecat_test.ts
 
+      - name: Test atomic profile write contract
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/profile_write_test.ts
+
       - name: Test timezone horoscope periods
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/periods_test.ts
 

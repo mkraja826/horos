@@ -8,8 +8,23 @@ function normalizeScopeValue(value: string): string {
   return value.trim().toLowerCase();
 }
 
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+function authRatePepper(explicitPepper?: string): string {
+  const value = explicitPepper?.trim() ||
+    Deno.env.get("AUTH_RATE_LIMIT_PEPPER")?.trim() ||
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
+  if (!value) throw new Error("Auth rate-limit hashing is not configured.");
+  return value;
+}
+
+async function hmacSha256Hex(secret: string, value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -30,12 +45,14 @@ export function requestNetworkIdentity(request: Request): string {
 export async function authRateScopeHashes(
   request: Request,
   normalizedIdentifier: string,
+  explicitPepper?: string,
 ): Promise<{ identifierHash: string; ipHash: string }> {
   const identifier = normalizeScopeValue(normalizedIdentifier);
   const network = normalizeScopeValue(requestNetworkIdentity(request));
+  const pepper = authRatePepper(explicitPepper);
   const [identifierHash, ipHash] = await Promise.all([
-    sha256Hex(`horos-auth-rate-v1:identifier:${identifier}`),
-    sha256Hex(`horos-auth-rate-v1:network:${network}`),
+    hmacSha256Hex(pepper, `horos-auth-rate-v1:identifier:${identifier}`),
+    hmacSha256Hex(pepper, `horos-auth-rate-v1:network:${network}`),
   ]);
   return { identifierHash, ipHash };
 }

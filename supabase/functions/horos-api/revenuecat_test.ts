@@ -85,6 +85,21 @@ Deno.test("Cancelled subscription remains premium through the paid term", () => 
   assertEquals(state.isPremium, true, "cancelled premium access");
 });
 
+Deno.test("Cancelled subscription without a paid-through date is limited", () => {
+  const state = subscriptionState(
+    subscription({
+      status: "cancelled",
+      platform: "ios",
+      subscription_end_date: null,
+    }),
+    NOW,
+  );
+
+  assertEquals(state.access, "limited", "open-ended cancelled access");
+  assertEquals(state.status, "cancelled", "open-ended cancelled status");
+  assertEquals(state.isPremium, false, "open-ended cancelled premium access");
+});
+
 Deno.test("RevenueCat expiration has higher priority and revokes access", () => {
   const command = parseRevenueCatWebhook(
     lifecycleEvent({ id: "evt-expire-1", type: "EXPIRATION" }),

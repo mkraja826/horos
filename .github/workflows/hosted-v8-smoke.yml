@@ -1,0 +1,39 @@
+name: Hosted v8 smoke
+
+on:
+  push:
+    branches: [test/hosted-v8-smoke]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check public health and protected boundaries
+        env:
+          BASE_URL: https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api
+        run: |
+          set -euo pipefail
+
+          health="$(curl --fail --silent --show-error "$BASE_URL/health")"
+          test "$(jq -r '.status' <<<"$health")" = "ok"
+          test "$(jq -r '.backend' <<<"$health")" = "supabase"
+          test "$(jq -r '.astroProvider' <<<"$health")" = "skyfield_jpl_de440s"
+          test "$(jq -r '.astroProviderConfigured' <<<"$health")" = "true"
+
+          protected_code="$(curl --silent --show-error --output /tmp/protected.json --write-out '%{http_code}' "$BASE_URL/profile/me")"
+          test "$protected_code" = "401"
+          test "$(jq -r '.code' /tmp/protected.json)" = "UNAUTHORIZED"
+
+          webhook_code="$(curl --silent --show-error --output /tmp/webhook.json --write-out '%{http_code}' \
+            --request POST \
+            --header 'Authorization: Bearer definitely-invalid' \
+            --header 'Content-Type: application/json' \
+            --data '{"event":{}}' \
+            "$BASE_URL/subscription/webhook")"
+          test "$webhook_code" = "401"
+          test "$(jq -r '.code' /tmp/webhook.json)" = "UNAUTHORIZED_WEBHOOK"
+
+          echo "HOROS_HOSTED_V8_SMOKE=PASS"

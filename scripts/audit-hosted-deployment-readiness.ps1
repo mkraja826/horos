@@ -121,6 +121,7 @@ try {
         "eas.json",
         "supabase/config.toml",
         "supabase/functions/horos-api/index.ts",
+        "supabase/functions/horos-api/cors.ts",
         "supabase/functions/horos-api/db.ts",
         "supabase/functions/horos-api/astro.ts",
         "supabase/functions/horos-api/subscriptions.ts"
@@ -163,10 +164,11 @@ try {
     }
 
     $indexSource = Get-Content "supabase/functions/horos-api/index.ts" -Raw
+    $corsSource = Get-Content "supabase/functions/horos-api/cors.ts" -Raw
     $dbSource = Get-Content "supabase/functions/horos-api/db.ts" -Raw
     $astroSource = Get-Content "supabase/functions/horos-api/astro.ts" -Raw
     $subscriptionSource = Get-Content "supabase/functions/horos-api/subscriptions.ts" -Raw
-    $edgeSource = "$indexSource`n$dbSource`n$astroSource`n$subscriptionSource"
+    $edgeSource = "$indexSource`n$corsSource`n$dbSource`n$astroSource`n$subscriptionSource"
 
     foreach ($name in $RequiredEdgeVariables) {
         if (-not $edgeSource.Contains($name)) {
@@ -184,9 +186,10 @@ try {
         throw "Webhook route is incorrectly placed behind the user-authenticated boundary."
     }
 
-    Assert-Contains $indexSource "ALLOWED_ORIGINS" "Production CORS allow-list configuration is missing."
-    Assert-Contains $indexSource 'environment !== "production"' "Production CORS enforcement is missing."
-    Assert-Contains $indexSource 'Vary: "Origin"' "CORS responses must vary by Origin."
+    Assert-Contains $corsSource "ALLOWED_ORIGINS" "Production CORS allow-list configuration is missing."
+    Assert-Contains $corsSource 'environment !== "production"' "Production CORS enforcement is missing."
+    Assert-Contains $corsSource 'Vary: "Origin"' "CORS responses must vary by Origin."
+    Assert-Contains $indexSource 'import { corsHeaders } from "./cors.ts";' "Active API does not use the strict CORS module."
     Assert-Contains $astroSource 'parsed.protocol !== "https:"' "Production Astro provider HTTPS enforcement is missing."
     Assert-Contains $astroSource '"X-Astro-Consumer-ID"' "Astro consumer metering header is missing."
     Assert-Contains $astroSource '"X-Request-ID"' "Astro request idempotency header is missing."

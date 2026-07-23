@@ -55,6 +55,9 @@ jobs:
       - name: Test Horos user-flow contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/user_flow_test.ts
 
+      - name: Test RevenueCat webhook contract
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/revenuecat_test.ts
+
       - name: Test timezone horoscope periods
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/periods_test.ts
 

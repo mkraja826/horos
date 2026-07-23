@@ -1,4 +1,5 @@
 import { adminClient, getSubscription, ResponseError } from "./db.ts";
+import { parseRevenueCatWebhook } from "./revenuecat.ts";
 
 function requiredSecret(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -42,6 +43,7 @@ export async function verifyRevenueCat(
   const entitlement = body.subscriber?.entitlements?.[entitlementId];
   const expiresAt = entitlement?.expires_date ?? null;
   const active = Boolean(entitlement && (!expiresAt || new Date(expiresAt).getTime() > Date.now()));
+  const verifiedAt = Date.now();
   const result = await adminClient.from("subscriptions").upsert(
     {
       user_id: userId,
@@ -49,8 +51,11 @@ export async function verifyRevenueCat(
       product_id: entitlement?.product_identifier ?? requestedProductId,
       provider_customer_id: userId,
       status: active ? "active" : "expired",
-      subscription_start_date: entitlement?.purchase_date ?? new Date().toISOString(),
+      subscription_start_date: entitlement?.purchase_date ?? new Date(verifiedAt).toISOString(),
       subscription_end_date: expiresAt,
+      provider_event_timestamp_ms: verifiedAt,
+      provider_event_priority: 100,
+      provider_event_id: `verify-${crypto.randomUUID()}`,
     },
     { onConflict: "user_id" },
   );
@@ -59,48 +64,25 @@ export async function verifyRevenueCat(
 }
 
 export async function processRevenueCatWebhook(body: Record<string, unknown>) {
-  const event = (body.event ?? {}) as Record<string, unknown>;
-  const userId = String(event.app_user_id ?? "");
-  if (!userId) {
-    throw new ResponseError("Webhook event has no app user id.", 400, "INVALID_WEBHOOK");
-  }
-
-  const eventId = String(event.id ?? crypto.randomUUID());
-  const type = String(event.type ?? "");
-  const activeTypes = [
-    "INITIAL_PURCHASE",
-    "RENEWAL",
-    "UNCANCELLATION",
-    "PRODUCT_CHANGE",
-    "TEMPORARY_ENTITLEMENT_GRANT",
-  ];
-  const isActive = activeTypes.includes(type);
-  const isCancelled = type === "CANCELLATION";
-  const expiration = typeof event.expiration_at_ms === "number"
-    ? new Date(event.expiration_at_ms).toISOString()
-    : null;
-  const store = String(event.store ?? "").toLowerCase();
-  const platform = store.includes("apple") ? "ios" : "android";
-
-  const eventResult = await adminClient.from("webhook_events").upsert(
-    { id: eventId, provider: "revenuecat", payload_json: body },
-    { onConflict: "id", ignoreDuplicates: true },
-  );
-  if (eventResult.error) throw eventResult.error;
-
-  const subscriptionResult = await adminClient.from("subscriptions").upsert(
-    {
-      user_id: userId,
-      platform,
-      product_id: String(event.product_id ?? ""),
-      provider_customer_id: userId,
-      status: isActive ? "active" : isCancelled ? "cancelled" : "expired",
-      subscription_start_date: new Date().toISOString(),
-      subscription_end_date: expiration,
-    },
-    { onConflict: "user_id" },
-  );
-  if (subscriptionResult.error) throw subscriptionResult.error;
+  const entitlementId = Deno.env.get("REVENUECAT_ENTITLEMENT_ID")?.trim() || "premium";
+  const command = parseRevenueCatWebhook(body, entitlementId);
+  const result = await adminClient.rpc("process_revenuecat_webhook_v1", {
+    p_event_id: command.eventId,
+    p_event_timestamp_ms: command.eventTimestampMs,
+    p_event_priority: command.priority,
+    p_event_type: command.eventType,
+    p_app_user_id: command.appUserId,
+    p_user_id: command.databaseUserId,
+    p_platform: command.platform,
+    p_product_id: command.productId,
+    p_status: command.status,
+    p_purchased_at: command.purchasedAt,
+    p_expires_at: command.expiresAt,
+    p_payload: body,
+    p_processing_result: command.processingResult,
+  });
+  if (result.error) throw result.error;
+  return result.data ?? { processed: false, reason: "no_result", eventId: command.eventId };
 }
 
 export function verifyWebhookAuthorization(request: Request): void {

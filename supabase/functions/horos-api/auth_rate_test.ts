@@ -34,14 +34,19 @@ Deno.test("Auth rate hashes are stable and separate identifier from network scop
   const request = new Request("https://example.com/auth/login", {
     headers: { "cf-connecting-ip": "203.0.113.10" },
   });
-  const first = await authRateScopeHashes(request, "User@Example.COM");
-  const second = await authRateScopeHashes(request, "user@example.com");
+  const first = await authRateScopeHashes(request, "User@Example.COM", "test-pepper");
+  const second = await authRateScopeHashes(request, "user@example.com", "test-pepper");
 
   assertEquals(first, second, "normalized hashes");
   assertEquals(first.identifierHash.length, 64, "identifier hash length");
   assertEquals(first.ipHash.length, 64, "IP hash length");
   if (first.identifierHash === first.ipHash) {
     throw new Error("Identifier and network scopes must not share a hash namespace.");
+  }
+
+  const rotated = await authRateScopeHashes(request, "user@example.com", "rotated-pepper");
+  if (rotated.identifierHash === first.identifierHash) {
+    throw new Error("Changing the pepper must rotate stored auth scope hashes.");
   }
 });
 

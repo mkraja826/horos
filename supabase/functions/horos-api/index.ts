@@ -89,7 +89,7 @@ async function horoscope(userId: string, period: Period) {
     );
   }
 
-  const key = periodKey(period);
+  const key = periodKey(period, rows.birth.timezone);
   const cached = await adminClient
     .from("horoscope_cache")
     .select("content_json")
@@ -109,7 +109,7 @@ async function horoscope(userId: string, period: Period) {
         period_key: key,
         content_json: reading,
         calculation_mode: "provider",
-        expires_at: cacheExpiry(period),
+        expires_at: cacheExpiry(period, rows.birth.timezone),
       },
       { onConflict: "user_id,period,period_key" },
     );

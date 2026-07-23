@@ -1,10 +1,11 @@
 import { createClient, type User } from "supabase";
 
 import { ResponseError } from "./errors.ts";
-import type { BirthDetailsRow, Period, ProfileRow, SubscriptionRow } from "./types.ts";
+import type { BirthDetailsRow, ProfileRow, SubscriptionRow } from "./types.ts";
 import { subscriptionState } from "./user_flow.ts";
 
 export { ResponseError } from "./errors.ts";
+export { cacheExpiry, localDateInTimezone, periodKey } from "./periods.ts";
 export { subscriptionState } from "./user_flow.ts";
 
 function requiredEnv(name: string): string {
@@ -124,35 +125,4 @@ export async function getSubscription(userId: string) {
     if (update.error) throw update.error;
   }
   return state;
-}
-
-export function localDateInTimezone(timezone: string, date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${value.year}-${value.month}-${value.day}`;
-}
-
-export function periodKey(period: Period, date = new Date()): string {
-  if (period === "daily") return date.toISOString().slice(0, 10);
-  if (period === "monthly") return date.toISOString().slice(0, 7);
-  const firstDay = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(
-    ((date.getTime() - firstDay.getTime()) / 86_400_000 + firstDay.getUTCDay() + 1) / 7,
-  );
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-
-export function cacheExpiry(period: Period, date = new Date()): string {
-  if (period === "daily") {
-    return new Date(
-      Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1),
-    ).toISOString();
-  }
-  if (period === "weekly") return new Date(date.getTime() + 7 * 86_400_000).toISOString();
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1)).toISOString();
 }

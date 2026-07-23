@@ -55,5 +55,8 @@ jobs:
       - name: Test Horos user-flow contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/user_flow_test.ts
 
+      - name: Test timezone horoscope periods
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/periods_test.ts
+
       - name: Type-check local Astro adapter smoke
         run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_local_smoke.ts

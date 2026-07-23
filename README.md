@@ -33,9 +33,9 @@ The current protected local path supports:
 
 The approved wording for external material is:
 
-> Protected by twelve digest-locked internal JPL regression baselines. Independent external reference validation is not yet complete; the Astro evidence manifest currently records zero approved external snapshots and zero externally validated cases.
+> Protected by twelve digest-locked internal JPL regression baselines. The Astro evidence manifest records one approved Jagannatha Hora 8.0 snapshot for the Nagarjuna Sagar case, but zero cases are fully externally validated because a second independent source is still required.
 
-Do not claim independent verification against Jagannatha Hora or any other external program until reviewed evidence from two distinct independent sources per frozen case is committed to the Astro external-validation manifest. Internal regression baselines are not independent evidence.
+Do not claim complete independent external validation until reviewed evidence from two distinct independent sources per frozen case is committed to the Astro external-validation manifest. The approved Jagannatha Hora record is Source 1 for one case only; internal regression baselines are not independent evidence.
 
 Do not claim hosted availability until the hosted HTTPS Astro endpoint and deployed Horos Edge Function have passed their own end-to-end gate.
 

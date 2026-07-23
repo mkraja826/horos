@@ -22,8 +22,22 @@
         "EXPO_PUBLIC_APP_ENV": "preview"
       }
     },
+    "private-beta": {
+      "extends": "base",
+      "environment": "production",
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api",
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_ALLOW_DEMO_DATA": "false"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "extends": "base",
+      "environment": "production",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",

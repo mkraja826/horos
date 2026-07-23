@@ -44,6 +44,7 @@ set search_path = ''
 as $$
 declare
   v_inserted_count integer := 0;
+  v_upserted_count integer := 0;
   v_current_timestamp bigint := -1;
   v_current_priority integer := -1;
   v_current_event_id text := '';
@@ -187,18 +188,42 @@ begin
   )
   on conflict (user_id) do update
   set
-    platform = coalesce(excluded.platform, public.subscriptions.platform),
-    product_id = coalesce(excluded.product_id, public.subscriptions.product_id),
-    provider_customer_id = coalesce(excluded.provider_customer_id, public.subscriptions.provider_customer_id),
+    platform = coalesce(excluded.platform, subscriptions.platform),
+    product_id = coalesce(excluded.product_id, subscriptions.product_id),
+    provider_customer_id = coalesce(excluded.provider_customer_id, subscriptions.provider_customer_id),
     status = excluded.status,
     subscription_start_date = coalesce(
       excluded.subscription_start_date,
-      public.subscriptions.subscription_start_date
+      subscriptions.subscription_start_date
     ),
     subscription_end_date = excluded.subscription_end_date,
     provider_event_timestamp_ms = excluded.provider_event_timestamp_ms,
     provider_event_priority = excluded.provider_event_priority,
-    provider_event_id = excluded.provider_event_id;
+    provider_event_id = excluded.provider_event_id
+  where
+    excluded.provider_event_timestamp_ms > subscriptions.provider_event_timestamp_ms
+    or (
+      excluded.provider_event_timestamp_ms = subscriptions.provider_event_timestamp_ms
+      and excluded.provider_event_priority > subscriptions.provider_event_priority
+    )
+    or (
+      excluded.provider_event_timestamp_ms = subscriptions.provider_event_timestamp_ms
+      and excluded.provider_event_priority = subscriptions.provider_event_priority
+      and excluded.provider_event_id > coalesce(subscriptions.provider_event_id, '')
+    );
+
+  get diagnostics v_upserted_count = row_count;
+  if v_upserted_count = 0 then
+    update public.webhook_events
+    set processing_result = 'ignored_stale_event'
+    where id = p_event_id;
+
+    return jsonb_build_object(
+      'processed', false,
+      'reason', 'ignored_stale_event',
+      'eventId', p_event_id
+    );
+  end if;
 
   return jsonb_build_object(
     'processed', true,

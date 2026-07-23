@@ -117,7 +117,11 @@ export async function getSubscription(userId: string) {
   if (result.error) throw result.error;
   const row = (result.data as SubscriptionRow | null) ?? null;
   const state = subscriptionState(row);
-  if (row && !state.isPremium && (row.status === "trial" || row.status === "active")) {
+  if (
+    row &&
+    !state.isPremium &&
+    (row.status === "trial" || row.status === "active" || row.status === "cancelled")
+  ) {
     const update = await adminClient
       .from("subscriptions")
       .update({ status: "expired" })

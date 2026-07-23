@@ -72,3 +72,40 @@ jobs:
 
       - name: Type-check local Astro adapter smoke
         run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_local_smoke.ts
+
+      - name: Verify hosted v11 rejects unapproved browser origins
+        env:
+          BASE_URL: https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api
+        run: |
+          set -euo pipefail
+
+          assert_no_cors_trust() {
+            local headers="$1"
+            if grep -Eiq '^access-control-allow-(origin|headers|methods):' "$headers"; then
+              echo "Unexpected CORS trust header:"
+              cat "$headers"
+              exit 1
+            fi
+            grep -Eiq '^vary:.*origin' "$headers"
+          }
+
+          curl --fail --silent --show-error \
+            --dump-header /tmp/health-headers.txt \
+            --output /tmp/health.json \
+            --header 'Origin: https://unapproved.invalid' \
+            "$BASE_URL/health"
+          test "$(jq -r '.status' /tmp/health.json)" = "ok"
+          assert_no_cors_trust /tmp/health-headers.txt
+
+          preflight_code="$(curl --silent --show-error \
+            --dump-header /tmp/preflight-headers.txt \
+            --output /dev/null \
+            --write-out '%{http_code}' \
+            --request OPTIONS \
+            --header 'Origin: https://unapproved.invalid' \
+            --header 'Access-Control-Request-Method: GET' \
+            "$BASE_URL/health")"
+          test "$preflight_code" = "204"
+          assert_no_cors_trust /tmp/preflight-headers.txt
+
+          echo "HOROS_HOSTED_V11_CORS=PASS"

@@ -131,17 +131,18 @@ export function subscriptionState(row: SubscriptionRow | null, nowMilliseconds =
     ? new Date(row.subscription_end_date).getTime()
     : 0;
   const trialActive = row?.status === "trial" && trialEnd > nowMilliseconds;
-  const paidStatus = row?.status === "active" || row?.status === "cancelled";
-  const paidActive = paidStatus && (!subscriptionEnd || subscriptionEnd > nowMilliseconds);
-  const end = trialActive ? trialEnd : paidActive ? subscriptionEnd : 0;
+  const paidActive = row?.status === "active" && (!subscriptionEnd || subscriptionEnd > nowMilliseconds);
+  const cancelledActive = row?.status === "cancelled" && subscriptionEnd > nowMilliseconds;
+  const premiumActive = paidActive || cancelledActive;
+  const end = trialActive ? trialEnd : premiumActive ? subscriptionEnd : 0;
   const inactiveStatus = row?.status === "cancelled" ? "cancelled" : "expired";
   const paidStateStatus = row?.status === "cancelled" ? "cancelled" : "active";
   return {
-    access: trialActive ? "trial" : paidActive ? "active" : "limited",
-    status: trialActive ? "trial" : paidActive ? paidStateStatus : inactiveStatus,
+    access: trialActive ? "trial" : premiumActive ? "active" : "limited",
+    status: trialActive ? "trial" : premiumActive ? paidStateStatus : inactiveStatus,
     trialEndsAt: row?.trial_end_date ?? undefined,
     subscriptionEndsAt: row?.subscription_end_date ?? undefined,
     daysRemaining: end ? Math.max(0, Math.ceil((end - nowMilliseconds) / 86_400_000)) : 0,
-    isPremium: trialActive || paidActive,
+    isPremium: trialActive || premiumActive,
   };
 }

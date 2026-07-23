@@ -55,10 +55,19 @@ function corsHeaders(request: Request): HeadersInit {
   };
 }
 
-function json(request: Request, body: unknown, status = 200): Response {
+function json(
+  request: Request,
+  body: unknown,
+  status = 200,
+  extraHeaders: HeadersInit = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders(request), "Content-Type": "application/json; charset=utf-8" },
+    headers: {
+      ...corsHeaders(request),
+      "Content-Type": "application/json; charset=utf-8",
+      ...extraHeaders,
+    },
   });
 }
 
@@ -170,7 +179,7 @@ async function route(request: Request): Promise<Response> {
 
   if (request.method === "POST" && path === "/auth/login") {
     const body = await bodyJson(request);
-    const result = body.otp ? await verifyOtp(body) : await requestOtp(body);
+    const result = body.otp ? await verifyOtp(request, body) : await requestOtp(request, body);
     return json(request, result);
   }
   if (request.method === "POST" && path === "/auth/refresh") {
@@ -268,7 +277,12 @@ Deno.serve(async (request) => {
   } catch (error) {
     console.error(error);
     if (error instanceof ResponseError) {
-      return json(request, { code: error.code, message: error.message }, error.status);
+      return json(
+        request,
+        { code: error.code, message: error.message, ...error.details },
+        error.status,
+        error.headers,
+      );
     }
     if (error instanceof AstroProviderError) {
       return json(

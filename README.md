@@ -33,7 +33,9 @@ The current protected local path supports:
 
 The approved wording for external material is:
 
-> Validated against JPL internal baselines and independently verified against Jagannatha Hora 8.0.
+> Protected by twelve digest-locked internal JPL regression baselines. Independent external reference validation is not yet complete; the Astro evidence manifest currently records zero approved external snapshots and zero externally validated cases.
+
+Do not claim independent verification against Jagannatha Hora or any other external program until reviewed evidence from two distinct independent sources per frozen case is committed to the Astro external-validation manifest. Internal regression baselines are not independent evidence.
 
 Do not claim hosted availability until the hosted HTTPS Astro endpoint and deployed Horos Edge Function have passed their own end-to-end gate.
 
@@ -161,10 +163,12 @@ Completed locally:
 - chart and Panchang local integration;
 - repeatable local smoke;
 - Panchang Tithi normalization;
-- static hosted deployment repository audit.
+- static hosted deployment repository audit;
+- Astro external-validation evidence manifest and approval rules.
 
 Still pending:
 
+- independent exports and two approved source records for every frozen Astro case;
 - hosted HTTPS Astro endpoint;
 - remote Horos migration verification;
 - hosted Horos Edge Function secrets and deployment;

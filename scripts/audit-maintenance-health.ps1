@@ -5,6 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $MigrationPath = "supabase/migrations/20260723134500_maintenance_health_monitoring_v1.sql"
+$FailurePersistencePath = "supabase/migrations/20260723135000_maintenance_health_failure_persistence_v1.sql"
 
 function Assert-Contains {
     param(
@@ -20,11 +21,14 @@ function Assert-Contains {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
 try {
-    if (-not (Test-Path $MigrationPath -PathType Leaf)) {
-        throw "Maintenance-health migration is missing: $MigrationPath"
+    foreach ($path in @($MigrationPath, $FailurePersistencePath)) {
+        if (-not (Test-Path $path -PathType Leaf)) {
+            throw "Maintenance-health migration is missing: $path"
+        }
     }
 
     $migration = Get-Content $MigrationPath -Raw
+    $failurePersistence = Get-Content $FailurePersistencePath -Raw
 
     Assert-Contains $migration "create table if not exists public.maintenance_runs" "Maintenance run ledger is missing."
     Assert-Contains $migration "create table if not exists public.maintenance_alerts" "Maintenance alert ledger is missing."
@@ -48,6 +52,10 @@ try {
     Assert-Contains $migration "from public, anon, authenticated" "Public maintenance execution was not revoked."
     Assert-Contains $migration "completed_at is not null" "Incomplete maintenance runs may be deleted."
     Assert-Contains $migration "status = 'resolved'" "Open alerts may be deleted by retention."
+
+    Assert-Contains $failurePersistence "raise warning 'Maintenance alert refresh failed after failed retention run" "A secondary alert failure can erase the failed-run ledger."
+    Assert-Contains $failurePersistence "update public.maintenance_runs" "Failure persistence does not update the run ledger."
+    Assert-Contains $failurePersistence "status = 'failed'" "Failed maintenance status is not persisted."
 
     if ($migration -match "grant execute on function public.get_horos_maintenance_health_v1[\s\S]{0,200}to (anon|authenticated)") {
         throw "Maintenance health must not be exposed to mobile roles."

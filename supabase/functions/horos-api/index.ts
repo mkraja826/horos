@@ -5,6 +5,7 @@ import {
   isAstroProviderConfigured,
 } from "./astro.ts";
 import { refreshSession, requestOtp, verifyOtp } from "./auth.ts";
+import { corsHeaders } from "./cors.ts";
 import {
   adminClient,
   cacheExpiry,
@@ -31,28 +32,6 @@ function requestPath(request: Request): string {
   const index = pathname.indexOf(marker);
   if (index >= 0) return pathname.slice(index + marker.length) || "/";
   return pathname || "/";
-}
-
-function allowedOrigin(request: Request): string {
-  const origin = request.headers.get("Origin");
-  if (!origin) return "*";
-  const configured = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const environment = Deno.env.get("ENVIRONMENT") ?? "development";
-  if (environment !== "production" || configured.includes(origin)) return origin;
-  return configured[0] ?? "";
-}
-
-function corsHeaders(request: Request): HeadersInit {
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin(request),
-    "Access-Control-Allow-Headers": "authorization, content-type, x-client-info, apikey",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Max-Age": "86400",
-    Vary: "Origin",
-  };
 }
 
 function json(

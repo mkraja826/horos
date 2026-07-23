@@ -14,16 +14,38 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+function preferredNamedKey(namedEnv: string, legacyEnv: string): string {
+  const raw = Deno.env.get(namedEnv)?.trim();
+  if (!raw) return requiredEnv(legacyEnv);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`${namedEnv} is not valid JSON.`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${namedEnv} is not a named-key object.`);
+  }
+
+  const value = (parsed as Record<string, unknown>).default;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${namedEnv}.default is not configured.`);
+  }
+  return value.trim();
+}
+
 const supabaseUrl = requiredEnv("SUPABASE_URL");
 const anonKey = requiredEnv("SUPABASE_ANON_KEY");
-const serviceRoleKey = requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+const adminKey = preferredNamedKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
 
 export const authClient = createClient(supabaseUrl, anonKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
 
-export const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
+export const adminClient = createClient(supabaseUrl, adminKey, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
 
 export function bearerToken(request: Request): string | null {

@@ -5,7 +5,7 @@ import {
 } from "./compatibility.ts";
 import { assertCompatibilityFactsContract } from "./compatibility_contract.ts";
 import { buildCompatibilityProviderBody } from "./compatibility_provider.ts";
-import { ResponseError } from "./db.ts";
+import { ResponseError } from "./errors.ts";
 import type { BirthDetailsRow } from "./types.ts";
 
 function assertEquals(actual: unknown, expected: unknown, message: string): void {

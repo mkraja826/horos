@@ -12,6 +12,11 @@ import type {
   SubscriptionState,
   UserProfile,
 } from "@/types/models";
+import type {
+  LifeProfileReport,
+  MonthAnalysisReport,
+  YearAnalysisReport,
+} from "@/types/phase4-analysis";
 
 const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/$/, "");
 export const isApiConfigured = Boolean(configuredUrl);
@@ -29,7 +34,7 @@ export class ApiError extends Error {
   }
 }
 
-type RequestOptions = RequestInit & { authenticated?: boolean };
+type RequestOptions = RequestInit & { authenticated?: boolean; timeoutMs?: number };
 let refreshInFlight: Promise<string> | null = null;
 
 async function parseResponse<T>(response: Response): Promise<T> {
@@ -93,8 +98,8 @@ async function request<T>(
   if (!configuredUrl) throw new ApiError("The API URL is not configured.", 0, "API_NOT_CONFIGURED");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
-  const { authenticated = true, ...fetchOptions } = options;
+  const { authenticated = true, timeoutMs = 20000, ...fetchOptions } = options;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const token = authenticated ? await getSecureValue(SESSION_KEY) : null;
 
   try {
@@ -183,6 +188,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  lifeProfile: () =>
+    request<LifeProfileReport>("/analysis/life-profile", { timeoutMs: 35000 }),
+  monthAnalysis: (year: number, month: number) =>
+    request<MonthAnalysisReport>(`/analysis/month?year=${year}&month=${month}`, {
+      timeoutMs: 35000,
+    }),
+  yearAnalysis: (year: number) =>
+    request<YearAnalysisReport>(`/analysis/year?year=${year}`, { timeoutMs: 70000 }),
 
   subscriptionStatus: () => request<SubscriptionState>("/subscription/status"),
   verifySubscription: (platform: "android" | "ios", productId: string) =>

@@ -11,7 +11,10 @@ import { LoadingCard, QueryError } from "@/components/query-state";
 import { Screen } from "@/components/screen";
 import { SubscriptionBanner } from "@/components/subscription-banner";
 import { radius, spacing } from "@/constants/theme";
-import { isPhase4CompatibilityUiEnabled } from "@/lib/feature-flags";
+import {
+  isPhase4AnalysisUiEnabled,
+  isPhase4CompatibilityUiEnabled,
+} from "@/lib/feature-flags";
 import { formatLongDate } from "@/lib/format";
 import { useDailyReading } from "@/hooks/use-vedic-data";
 import { useApp } from "@/providers/app-provider";
@@ -75,7 +78,14 @@ export default function HomeScreen() {
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
               <View
-                style={{ width: 46, height: 46, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: radius.pill,
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
                 <AppIcon name="sun" size={24} color="#F2C66D" />
               </View>
@@ -85,14 +95,21 @@ export default function HomeScreen() {
               {reading.data.results[0]?.domain === "career" ? "Career & work" : "Current reading"}
             </AppText>
             <AppText color="#E8DFD2">
-              {reading.data.results[0]?.statement ?? "There is not enough directional evidence for a conclusion."}
+              {reading.data.results[0]?.statement ??
+                "There is not enough directional evidence for a conclusion."}
             </AppText>
             <AppText variant="caption" color="#DCD3C2">
               {reading.data.results[0]
-                ? `${reading.data.results[0].outlook.replace("_evidence", "").replace("_", " ")} · ${reading.data.results[0].strength} strength`
+                ? `${reading.data.results[0].outlook
+                    .replace("_evidence", "")
+                    .replace("_", " ")} · ${reading.data.results[0].strength} strength`
                 : "Insufficient evidence"}
             </AppText>
-            <AppButton label="View evidence and disclaimer" variant="secondary" onPress={() => router.push("/daily")} />
+            <AppButton
+              label="View evidence and disclaimer"
+              variant="secondary"
+              onPress={() => router.push("/daily")}
+            />
           </Card>
           <Card>
             <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "flex-start" }}>
@@ -128,7 +145,14 @@ export default function HomeScreen() {
             />
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
               <View
-                style={{ width: 46, height: 46, borderRadius: radius.pill, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: radius.pill,
+                  backgroundColor: "rgba(255,255,255,0.12)",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
               >
                 <AppIcon name="sun" size={24} color="#F2C66D" />
               </View>
@@ -140,12 +164,25 @@ export default function HomeScreen() {
               {reading.data.focus}
             </AppText>
             <AppText color="#E8DFD2">{reading.data.summary}</AppText>
-            <AppButton label="View full daily reading" variant="secondary" onPress={() => router.push("/daily")} />
+            <AppButton
+              label="View full daily reading"
+              variant="secondary"
+              onPress={() => router.push("/daily")}
+            />
           </Card>
 
           <View style={{ flexDirection: "row", gap: spacing.sm }}>
             <Card tone="warm" style={{ flex: 1, alignItems: "center", padding: spacing.md }}>
-              <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: reading.data.luckyColorHex, borderWidth: 2, borderColor: colors.surface }} />
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  backgroundColor: reading.data.luckyColorHex,
+                  borderWidth: 2,
+                  borderColor: colors.surface,
+                }}
+              />
               <AppText variant="caption" muted>
                 Lucky color
               </AppText>
@@ -179,8 +216,18 @@ export default function HomeScreen() {
       <View style={{ gap: spacing.md }}>
         <AppText variant="heading">Look ahead</AppText>
         {[
-          { href: "/weekly" as const, title: "Weekly guidance", text: "Family harmony, work rhythm and favorable days", icon: "calendar" },
-          { href: "/monthly" as const, title: "Monthly guidance", text: "Planning themes, important dates and spiritual focus", icon: "moon" }
+          {
+            href: "/weekly" as const,
+            title: "Weekly guidance",
+            text: "Family harmony, work rhythm and favorable days",
+            icon: "calendar",
+          },
+          {
+            href: "/monthly" as const,
+            title: "Monthly guidance",
+            text: "Planning themes, important dates and spiritual focus",
+            icon: "moon",
+          },
         ].map((item) => (
           <Link key={item.href} href={item.href} asChild>
             <Pressable>
@@ -190,7 +237,9 @@ export default function HomeScreen() {
                   <View style={{ flex: 1, gap: 2 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                       <AppText variant="label">{item.title}</AppText>
-                      {!subscription.isPremium && <AppIcon name="crown" size={15} color={colors.gold} />}
+                      {!subscription.isPremium && (
+                        <AppIcon name="crown" size={15} color={colors.gold} />
+                      )}
                     </View>
                     <AppText variant="caption" muted>
                       {item.text}
@@ -202,6 +251,52 @@ export default function HomeScreen() {
             </Pressable>
           </Link>
         ))}
+
+        {isPhase4AnalysisUiEnabled
+          ? [
+              {
+                href: "/life-profile" as const,
+                title: "My Life Profile",
+                text: "Traits, relationships, work, resources, wellbeing and evidence",
+                icon: "profile",
+              },
+              {
+                href: "/year-analysis" as const,
+                title: "Year analysis",
+                text: "A comparable twelve-month outlook timeline",
+                icon: "calendar",
+              },
+              {
+                href: "/month-analysis" as const,
+                title: "Specific month analysis",
+                text: "Select a year and month for seven-domain detail",
+                icon: "moon",
+              },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} asChild>
+                <Pressable>
+                  <Card>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                      <IconBadge name={item.icon} tone="blue" />
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <View
+                          style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}
+                        >
+                          <AppText variant="label">{item.title}</AppText>
+                          {!subscription.isPremium && (
+                            <AppIcon name="crown" size={15} color={colors.gold} />
+                          )}
+                        </View>
+                        <AppText variant="caption" muted>{item.text}</AppText>
+                      </View>
+                      <AppIcon name="chevron" size={21} color={colors.textMuted} />
+                    </View>
+                  </Card>
+                </Pressable>
+              </Link>
+            ))
+          : null}
+
         {isPhase4CompatibilityUiEnabled ? (
           <Link href="/compatibility" asChild>
             <Pressable>
@@ -211,7 +306,9 @@ export default function HomeScreen() {
                   <View style={{ flex: 1, gap: 2 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
                       <AppText variant="label">Kundli compatibility</AppText>
-                      {!subscription.isPremium && <AppIcon name="crown" size={15} color={colors.gold} />}
+                      {!subscription.isPremium && (
+                        <AppIcon name="crown" size={15} color={colors.gold} />
+                      )}
                     </View>
                     <AppText variant="caption" muted>
                       Eight Kootas, truthful coverage and separate Manglik context
@@ -227,7 +324,8 @@ export default function HomeScreen() {
 
       <SubscriptionBanner />
       <AppText variant="caption" muted style={{ textAlign: "center" }}>
-        Astrology-based guidance for reflection and entertainment—not a replacement for professional advice.
+        Astrology-based guidance for reflection and entertainment—not a replacement for
+        professional advice.
       </AppText>
     </Screen>
   );

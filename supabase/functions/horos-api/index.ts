@@ -4,6 +4,11 @@ import {
   calculatePrediction,
   isAstroProviderConfigured,
 } from "./astro.ts";
+import {
+  isPhase4CompatibilityEnabled,
+  parseCompatibilityRequest,
+} from "./compatibility.ts";
+import { calculateCompatibilityFacts } from "./compatibility_provider.ts";
 import { refreshSession, requestOtp, verifyOtp } from "./auth.ts";
 import { corsHeaders } from "./cors.ts";
 import {
@@ -183,6 +188,7 @@ async function route(request: Request): Promise<Response> {
       backend: "supabase",
       astroProvider: "skyfield_jpl_de440s",
       astroProviderConfigured: isAstroProviderConfigured(),
+      phase4CompatibilityEnabled: isPhase4CompatibilityEnabled(),
       time: new Date().toISOString(),
     });
   }
@@ -218,6 +224,31 @@ async function route(request: Request): Promise<Response> {
 
   if (request.method === "GET" && path.startsWith("/horoscope/")) {
     return json(request, await horoscope(user.id, validatePeriod(path.split("/").pop() ?? "")));
+  }
+
+  if (request.method === "POST" && path === "/compatibility/facts") {
+    if (!isPhase4CompatibilityEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    const [rows, subscription] = await Promise.all([
+      getProfileRows(user.id),
+      getSubscription(user.id),
+    ]);
+    if (!rows) {
+      throw new ResponseError("Complete your birth profile first.", 404, "PROFILE_NOT_FOUND");
+    }
+    if (!subscription.isPremium) {
+      throw new ResponseError(
+        "Kundli compatibility requires complete access.",
+        402,
+        "PREMIUM_REQUIRED",
+      );
+    }
+    const compatibility = parseCompatibilityRequest(await bodyJson(request));
+    return json(
+      request,
+      await calculateCompatibilityFacts(rows.birth, compatibility, user.id),
+    );
   }
 
   if (request.method === "GET" && path === "/birth-chart") {

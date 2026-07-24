@@ -1,4 +1,4 @@
-import { ResponseError } from "./db.ts";
+import { ResponseError } from "./errors.ts";
 
 export type TraditionalCompatibilityRole = "unspecified" | "bride" | "groom";
 

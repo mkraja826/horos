@@ -8,7 +8,10 @@ import {
   isPhase4CompatibilityEnabled,
   parseCompatibilityRequest,
 } from "./compatibility.ts";
-import { calculateCompatibilityFacts } from "./compatibility_provider.ts";
+import {
+  calculateCompatibilityFacts,
+  calculateCompatibilityReport,
+} from "./compatibility_provider.ts";
 import { refreshSession, requestOtp, verifyOtp } from "./auth.ts";
 import { corsHeaders } from "./cors.ts";
 import {
@@ -175,6 +178,24 @@ async function registerNotification(userId: string, body: Record<string, unknown
   return { registered: true as const };
 }
 
+async function compatibilityAccess(userId: string) {
+  const [rows, subscription] = await Promise.all([
+    getProfileRows(userId),
+    getSubscription(userId),
+  ]);
+  if (!rows) {
+    throw new ResponseError("Complete your birth profile first.", 404, "PROFILE_NOT_FOUND");
+  }
+  if (!subscription.isPremium) {
+    throw new ResponseError(
+      "Kundli compatibility requires complete access.",
+      402,
+      "PREMIUM_REQUIRED",
+    );
+  }
+  return rows.birth;
+}
+
 async function route(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
@@ -230,24 +251,23 @@ async function route(request: Request): Promise<Response> {
     if (!isPhase4CompatibilityEnabled()) {
       throw new ResponseError("API route not found.", 404, "NOT_FOUND");
     }
-    const [rows, subscription] = await Promise.all([
-      getProfileRows(user.id),
-      getSubscription(user.id),
-    ]);
-    if (!rows) {
-      throw new ResponseError("Complete your birth profile first.", 404, "PROFILE_NOT_FOUND");
-    }
-    if (!subscription.isPremium) {
-      throw new ResponseError(
-        "Kundli compatibility requires complete access.",
-        402,
-        "PREMIUM_REQUIRED",
-      );
-    }
+    const birth = await compatibilityAccess(user.id);
     const compatibility = parseCompatibilityRequest(await bodyJson(request));
     return json(
       request,
-      await calculateCompatibilityFacts(rows.birth, compatibility, user.id),
+      await calculateCompatibilityFacts(birth, compatibility, user.id),
+    );
+  }
+
+  if (request.method === "POST" && path === "/compatibility/report") {
+    if (!isPhase4CompatibilityEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    const birth = await compatibilityAccess(user.id);
+    const compatibility = parseCompatibilityRequest(await bodyJson(request));
+    return json(
+      request,
+      await calculateCompatibilityReport(birth, compatibility, user.id),
     );
   }
 

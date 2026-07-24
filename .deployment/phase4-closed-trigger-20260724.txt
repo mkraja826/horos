@@ -1,0 +1,1 @@
+Trigger the one-time closed-state Horos Edge Function deployment after Phase 4 feature completion.

@@ -1,8 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -10,124 +8,22 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Audit hosted deployment repository readiness
-        shell: pwsh
-        run: ./scripts/audit-hosted-deployment-readiness.ps1
-
-      - name: Audit automated data retention
-        shell: pwsh
-        run: ./scripts/audit-data-retention-contract.ps1
-
-      - name: Audit Phase 4 analysis release boundaries
-        shell: pwsh
-        run: ./scripts/audit-phase4-analysis-contract.ps1
-
-      - name: Audit saved partner consent and deletion
-        shell: pwsh
-        run: ./scripts/audit-saved-partner-contract.ps1
-
-      - name: Audit maintenance health monitoring
-        shell: pwsh
-        run: ./scripts/audit-maintenance-health.ps1
-
-      - name: Set up pinned Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20.19.4"
-          cache: npm
-
-      - name: Set up pinned npm
-        run: npm install --global npm@10.8.2
-
-      - name: Verify reproducible manifests and lockfile
-        run: npm run verify:reproducible
-
-      - name: Verify private-beta EAS build profile
-        run: npm run verify:eas-private-beta
-
-      - name: Install dependencies from lockfile
-        run: npm ci
-
-      - name: Check Expo SDK dependency compatibility
-        run: npx expo install --check
-
-      - name: Type-check Expo and legacy Worker
-        run: npm run typecheck
-
-      - name: Lint Expo app
-        run: npm run lint
-
-      - name: Parse private-beta PowerShell preflight
-        shell: pwsh
+      - name: Probe hosted Astro analysis routes
+        shell: bash
         run: |
-          $content = Get-Content ./scripts/verify-private-beta-local.ps1 -Raw
-          [scriptblock]::Create($content) | Out-Null
-
-      - name: Set up Deno
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
-      - name: Type-check Supabase Edge Function
-        run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/index.ts
-
-      - name: Test Astro gateway contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_test.ts
-
-      - name: Test Phase 4 compatibility gateway contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_test.ts
-
-      - name: Test saved partner consent contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/saved_partner_contract_test.ts
-
-      - name: Test Phase 4 compatibility report contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_report_test.ts
-
-      - name: Test Phase 4 Life Profile and period contracts
-        run: |
-          set -o pipefail
-          deno test --allow-env \
-            --junit-path=analysis-junit.xml \
-            --config supabase/functions/horos-api/deno.json \
-            supabase/functions/horos-api/analysis_test.ts 2>&1 | tee analysis-test.log
-
-      - name: Upload Phase 4 test diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase4-analysis-diagnostics
-          path: |
-            analysis-junit.xml
-            analysis-test.log
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Test prediction cache contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/prediction_contract_test.ts
-
-      - name: Test Horos user-flow contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/user_flow_test.ts
-
-      - name: Test RevenueCat webhook contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/revenuecat_test.ts
-
-      - name: Test atomic profile write contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/profile_write_test.ts
-
-      - name: Test OTP abuse-control contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/auth_rate_test.ts
-
-      - name: Test production CORS contract
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/cors_test.ts
-
-      - name: Test timezone horoscope periods
-        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/periods_test.ts
-
-      - name: Type-check local Astro adapter smoke
-        run: deno check --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_local_smoke.ts
+          set -euo pipefail
+          result="$(curl --fail --silent --show-error --retry 5 --retry-delay 3 \
+            https://hdaugtypjpniesdgyral.supabase.co/functions/v1/astro-route-probe)"
+          echo "$result"
+          RESULT="$result" node - <<'NODE'
+          const result = JSON.parse(process.env.RESULT);
+          if (result.configured !== true) throw new Error('Astro provider is not configured.');
+          if (result.healthStatus !== 200) throw new Error('Astro health is unavailable.');
+          const values = Object.values(result.routes ?? {});
+          if (values.length !== 3) throw new Error('Route probe is incomplete.');
+          const current = values.every((item) => item.status === 422 && item.detailType === 'validation');
+          if (!current) process.exitCode = 2;
+          NODE

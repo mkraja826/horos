@@ -11,6 +11,7 @@ import { LoadingCard, QueryError } from "@/components/query-state";
 import { Screen } from "@/components/screen";
 import { SubscriptionBanner } from "@/components/subscription-banner";
 import { radius, spacing } from "@/constants/theme";
+import { isPhase4CompatibilityUiEnabled } from "@/lib/feature-flags";
 import { formatLongDate } from "@/lib/format";
 import { useDailyReading } from "@/hooks/use-vedic-data";
 import { useApp } from "@/providers/app-provider";
@@ -201,6 +202,27 @@ export default function HomeScreen() {
             </Pressable>
           </Link>
         ))}
+        {isPhase4CompatibilityUiEnabled ? (
+          <Link href="/compatibility" asChild>
+            <Pressable>
+              <Card>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                  <IconBadge name="star" tone="warm" />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+                      <AppText variant="label">Kundli compatibility</AppText>
+                      {!subscription.isPremium && <AppIcon name="crown" size={15} color={colors.gold} />}
+                    </View>
+                    <AppText variant="caption" muted>
+                      Eight Kootas, truthful coverage and separate Manglik context
+                    </AppText>
+                  </View>
+                  <AppIcon name="chevron" size={21} color={colors.textMuted} />
+                </View>
+              </Card>
+            </Pressable>
+          </Link>
+        ) : null}
       </View>
 
       <SubscriptionBanner />

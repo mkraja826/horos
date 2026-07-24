@@ -78,6 +78,9 @@ jobs:
       - name: Test Phase 4 compatibility report contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_report_test.ts
 
+      - name: Test Phase 4 Life Profile and period contracts
+        run: deno test --allow-env --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/analysis_test.ts
+
       - name: Test prediction cache contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/prediction_contract_test.ts
 

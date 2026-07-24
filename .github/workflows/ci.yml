@@ -16,6 +16,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Verify hosted Phase 4 closed state
+        shell: bash
+        run: |
+          set -euo pipefail
+          health="$(curl --fail --silent --show-error --retry 5 --retry-delay 3 \
+            https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api/health)"
+          HEALTH="$health" node - <<'NODE'
+          const health = JSON.parse(process.env.HEALTH);
+          if (health.status !== 'ok') throw new Error('Hosted health is not ok.');
+          if (health.backend !== 'supabase') throw new Error('Hosted backend is not Supabase.');
+          if (health.astroProviderConfigured !== true) throw new Error('Astro provider is not configured.');
+          if (health.phase4CompatibilityEnabled !== false) throw new Error('Compatibility flag is not closed.');
+          if (health.phase4AnalysisEnabled !== false) throw new Error('Analysis flag is not closed.');
+          console.log(JSON.stringify(health));
+          NODE
+
       - name: Audit hosted deployment repository readiness
         shell: pwsh
         run: ./scripts/audit-hosted-deployment-readiness.ps1

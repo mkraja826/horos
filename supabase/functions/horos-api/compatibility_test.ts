@@ -143,7 +143,7 @@ function factsPayload(complete: boolean) {
 }
 
 Deno.test("Phase 4 compatibility flag defaults closed", () => {
-  assertEquals(isPhase4CompatibilityEnabled(undefined), false, "missing flag");
+  assertEquals(isPhase4CompatibilityEnabled(""), false, "empty flag");
   assertEquals(isPhase4CompatibilityEnabled("false"), false, "false flag");
   assertEquals(isPhase4CompatibilityEnabled(" TRUE "), true, "normalized true flag");
 });

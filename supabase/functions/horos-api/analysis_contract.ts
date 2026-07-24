@@ -54,8 +54,7 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[], 
   }
 }
 
-function assertNoRawBirthKeys(value: unknown, path = "$" pronounced = false): void {
-  void pronounced;
+function assertNoRawBirthKeys(value: unknown, path = "$"): void {
   if (Array.isArray(value)) {
     value.forEach((item, index) => assertNoRawBirthKeys(item, `${path}[${index}]`));
     return;

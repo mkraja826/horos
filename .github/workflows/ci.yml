@@ -72,6 +72,17 @@ jobs:
       - name: Test Astro gateway contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/astro_test.ts
 
+      - name: Capture Phase 4 compatibility gateway diagnostics
+        run: |
+          deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_test.ts > compatibility-test.log 2>&1 || true
+
+      - name: Upload Phase 4 compatibility diagnostics
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compatibility-test-log
+          path: compatibility-test.log
+
       - name: Test Phase 4 compatibility gateway contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_test.ts
 

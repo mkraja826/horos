@@ -84,17 +84,20 @@ jobs:
 
       - name: Test Phase 4 Life Profile and period contracts
         run: |
+          set -o pipefail
           deno test --allow-env \
             --junit-path=analysis-junit.xml \
             --config supabase/functions/horos-api/deno.json \
-            supabase/functions/horos-api/analysis_test.ts
+            supabase/functions/horos-api/analysis_test.ts 2>&1 | tee analysis-test.log
 
       - name: Upload Phase 4 test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: phase4-analysis-junit
-          path: analysis-junit.xml
+          name: phase4-analysis-diagnostics
+          path: |
+            analysis-junit.xml
+            analysis-test.log
           if-no-files-found: error
           retention-days: 1
 

@@ -11,6 +11,13 @@ export type CompatibilityBirthInput = {
   altitudeMeters: number;
 };
 
+export type CompatibilityRequestSelection = {
+  partnerBirth: CompatibilityBirthInput | null;
+  savedPartnerId: string | null;
+  subjectRole: TraditionalCompatibilityRole;
+  partnerRole: TraditionalCompatibilityRole;
+};
+
 export type CompatibilityRequestInput = {
   partnerBirth: CompatibilityBirthInput;
   subjectRole: TraditionalCompatibilityRole;
@@ -19,7 +26,13 @@ export type CompatibilityRequestInput = {
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$/;
-const ALLOWED_BODY_FIELDS = new Set(["partnerBirth", "subjectRole", "partnerRole"]);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ALLOWED_BODY_FIELDS = new Set([
+  "partnerBirth",
+  "savedPartnerId",
+  "subjectRole",
+  "partnerRole",
+]);
 const ALLOWED_BIRTH_FIELDS = new Set([
   "dateOfBirth",
   "timeOfBirth",
@@ -29,14 +42,14 @@ const ALLOWED_BIRTH_FIELDS = new Set([
   "altitudeMeters",
 ]);
 
-function objectValue(value: unknown, label: string): Record<string, unknown> {
+export function objectValue(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new ResponseError(`${label} is required.`, 400, "INVALID_COMPATIBILITY_REQUEST");
   }
   return value as Record<string, unknown>;
 }
 
-function rejectUnknownFields(
+export function rejectUnknownFields(
   value: Record<string, unknown>,
   allowed: Set<string>,
   label: string,
@@ -51,7 +64,7 @@ function rejectUnknownFields(
   }
 }
 
-function stringValue(value: unknown, label: string, maxLength: number): string {
+export function stringValue(value: unknown, label: string, maxLength: number): string {
   const normalized = typeof value === "string" ? value.trim() : "";
   if (!normalized || normalized.length > maxLength) {
     throw new ResponseError(`${label} is invalid.`, 400, "INVALID_COMPATIBILITY_REQUEST");
@@ -93,7 +106,7 @@ function roleValue(value: unknown, label: string): TraditionalCompatibilityRole 
   throw new ResponseError(`${label} is invalid.`, 400, "INVALID_COMPATIBILITY_ROLES");
 }
 
-function partnerBirth(value: unknown): CompatibilityBirthInput {
+export function parseCompatibilityBirthInput(value: unknown): CompatibilityBirthInput {
   const birth = objectValue(value, "Partner birth details");
   rejectUnknownFields(birth, ALLOWED_BIRTH_FIELDS, "Partner birth details");
   const dateOfBirth = stringValue(birth.dateOfBirth, "Partner birth date", 10);
@@ -116,10 +129,10 @@ function partnerBirth(value: unknown): CompatibilityBirthInput {
   };
 }
 
-export function parseCompatibilityRequest(body: Record<string, unknown>): CompatibilityRequestInput {
-  rejectUnknownFields(body, ALLOWED_BODY_FIELDS, "Compatibility request");
-  const subjectRole = roleValue(body.subjectRole, "Subject role");
-  const partnerRole = roleValue(body.partnerRole, "Partner role");
+function validateRoles(
+  subjectRole: TraditionalCompatibilityRole,
+  partnerRole: TraditionalCompatibilityRole,
+): void {
   const subjectUnspecified = subjectRole === "unspecified";
   const partnerUnspecified = partnerRole === "unspecified";
   if (subjectUnspecified !== partnerUnspecified) {
@@ -136,8 +149,42 @@ export function parseCompatibilityRequest(body: Record<string, unknown>): Compat
       "INVALID_COMPATIBILITY_ROLES",
     );
   }
+}
+
+export function parseCompatibilityRequest(
+  body: Record<string, unknown>,
+): CompatibilityRequestSelection {
+  rejectUnknownFields(body, ALLOWED_BODY_FIELDS, "Compatibility request");
+  const hasDirectBirth = body.partnerBirth !== undefined && body.partnerBirth !== null;
+  const hasSavedPartner = body.savedPartnerId !== undefined && body.savedPartnerId !== null &&
+    body.savedPartnerId !== "";
+  if (hasDirectBirth === hasSavedPartner) {
+    throw new ResponseError(
+      "Choose exactly one direct partner birth or saved partner profile.",
+      400,
+      "INVALID_COMPATIBILITY_SELECTION",
+    );
+  }
+
+  const subjectRole = roleValue(body.subjectRole, "Subject role");
+  const partnerRole = roleValue(body.partnerRole, "Partner role");
+  validateRoles(subjectRole, partnerRole);
+
+  let savedPartnerId: string | null = null;
+  if (hasSavedPartner) {
+    savedPartnerId = stringValue(body.savedPartnerId, "Saved partner ID", 36);
+    if (!UUID_PATTERN.test(savedPartnerId)) {
+      throw new ResponseError(
+        "Saved partner ID is invalid.",
+        400,
+        "INVALID_SAVED_PARTNER_ID",
+      );
+    }
+  }
+
   return {
-    partnerBirth: partnerBirth(body.partnerBirth),
+    partnerBirth: hasDirectBirth ? parseCompatibilityBirthInput(body.partnerBirth) : null,
+    savedPartnerId,
     subjectRole,
     partnerRole,
   };

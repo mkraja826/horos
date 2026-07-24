@@ -11,7 +11,7 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe hosted Astro analysis routes
+      - name: Classify hosted Astro and probe analysis routes
         shell: bash
         run: |
           set -euo pipefail
@@ -22,6 +22,7 @@ jobs:
           const result = JSON.parse(process.env.RESULT);
           if (result.configured !== true) throw new Error('Astro provider is not configured.');
           if (result.healthStatus !== 200) throw new Error('Astro health is unavailable.');
+          if (typeof result.hostCategory !== 'string') throw new Error('Host classification is missing.');
           const values = Object.values(result.routes ?? {});
           if (values.length !== 3) throw new Error('Route probe is incomplete.');
           const current = values.every((item) => item.status === 422 && item.detailType === 'validation');

@@ -54,20 +54,19 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[], 
   }
 }
 
-function assertNoRawBirthKeys(value: unknown, path = "$" hasAny = false): boolean {
+function assertNoRawBirthKeys(value: unknown, path = "$" pronounced = false): void {
+  void pronounced;
   if (Array.isArray(value)) {
-    return value.reduce((found, item, index) =>
-      assertNoRawBirthKeys(item, `${path}[${index}]`, found), hasAny);
+    value.forEach((item, index) => assertNoRawBirthKeys(item, `${path}[${index}]`));
+    return;
   }
-  if (!value || typeof value !== "object") return hasAny;
-  let found = hasAny;
+  if (!value || typeof value !== "object") return;
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
     if (RAW_BIRTH_KEYS.has(key)) {
       throw new Error(`Analysis response leaked raw birth input at ${path}.${key}.`);
     }
-    found = assertNoRawBirthKeys(item, `${path}.${key}`, found);
+    assertNoRawBirthKeys(item, `${path}.${key}`);
   }
-  return found;
 }
 
 function assertIndex(value: unknown, expectedDomain?: string) {
@@ -82,8 +81,13 @@ function assertIndex(value: unknown, expectedDomain?: string) {
   if (index.score_version !== "outlook_index_v1") {
     throw new Error("Outlook index version is unsupported.");
   }
-  if (index.score !== null &&
-    (typeof index.score !== "number" || !Number.isInteger(index.score) || index.score < 0 || index.score > 100)) {
+  if (
+    index.score !== null &&
+    (typeof index.score !== "number" ||
+      !Number.isInteger(index.score) ||
+      index.score < 0 ||
+      index.score > 100)
+  ) {
     throw new Error("Outlook index score is invalid.");
   }
   if (typeof index.coverage !== "number" || index.coverage < 0 || index.coverage > 1) {
@@ -104,14 +108,21 @@ function assertSections(value: unknown, expected: Set<string>) {
       throw new Error("Analysis section name is invalid.");
     }
     names.add(section.section);
-    if (typeof section.headline !== "string" || !section.headline.trim() ||
-      typeof section.narrative !== "string" || !section.narrative.trim() ||
-      typeof section.guidance !== "string" || !section.guidance.trim()) {
+    if (
+      typeof section.headline !== "string" ||
+      !section.headline.trim() ||
+      typeof section.narrative !== "string" ||
+      !section.narrative.trim() ||
+      typeof section.guidance !== "string" ||
+      !section.guidance.trim()
+    ) {
       throw new Error("Analysis section copy is incomplete.");
     }
-    if (!Array.isArray(section.supporting_evidence) ||
+    if (
+      !Array.isArray(section.supporting_evidence) ||
       !Array.isArray(section.challenging_evidence) ||
-      !Array.isArray(section.contextual_evidence)) {
+      !Array.isArray(section.contextual_evidence)
+    ) {
       throw new Error("Analysis section evidence groups are invalid.");
     }
     if (section.outlook_index !== null) assertIndex(section.outlook_index);
@@ -121,9 +132,12 @@ function assertSections(value: unknown, expected: Set<string>) {
 
 function assertPrediction(value: unknown, period: "natal" | "monthly") {
   const prediction = object(value, "source prediction");
-  if (prediction.engine_version !== "horos_brihat_jataka_v2" ||
+  if (
+    prediction.engine_version !== "horos_brihat_jataka_v2" ||
     prediction.calculation_profile !== "south_indian_drik_lahiri_jpl_de440s_v1" ||
-    prediction.classical_profile !== "varahamihira_v1" || prediction.period !== period) {
+    prediction.classical_profile !== "varahamihira_v1" ||
+    prediction.period !== period
+  ) {
     throw new Error("Source prediction contract is unsupported.");
   }
   if (!Array.isArray(prediction.results) || prediction.results.length === 0) {
@@ -131,24 +145,38 @@ function assertPrediction(value: unknown, period: "natal" | "monthly") {
   }
 }
 
-function assertMonthPair(factsValue: unknown, interpretationValue: unknown, year?: number, month?: number) {
+function assertMonthPair(
+  factsValue: unknown,
+  interpretationValue: unknown,
+  year?: number,
+  month?: number,
+) {
   const facts = object(factsValue, "month facts");
   const interpretation = object(interpretationValue, "month interpretation");
-  if (facts.facts_version !== "period_analysis_facts_v1" ||
+  if (
+    facts.facts_version !== "period_analysis_facts_v1" ||
     interpretation.facts_version !== "period_analysis_facts_v1" ||
-    interpretation.interpretation_version !== "period_analysis_interpretation_v1") {
+    interpretation.interpretation_version !== "period_analysis_interpretation_v1"
+  ) {
     throw new Error("Month analysis versions are unsupported.");
   }
-  if (typeof facts.year !== "number" || typeof facts.month !== "number" ||
-    facts.year !== interpretation.year || facts.month !== interpretation.month) {
+  if (
+    typeof facts.year !== "number" ||
+    typeof facts.month !== "number" ||
+    facts.year !== interpretation.year ||
+    facts.month !== interpretation.month
+  ) {
     throw new Error("Month facts and interpretation period mismatch.");
   }
   if (year !== undefined && facts.year !== year) throw new Error("Month year mismatch.");
   if (month !== undefined && facts.month !== month) throw new Error("Month number mismatch.");
-  if (facts.sampling_method !== "civil_month_midpoint_local_noon_v1" ||
-    facts.sampling_applied !== true || facts.exact_boundary_calculation_applied !== false ||
+  if (
+    facts.sampling_method !== "civil_month_midpoint_local_noon_v1" ||
+    facts.sampling_applied !== true ||
+    facts.exact_boundary_calculation_applied !== false ||
     interpretation.sampling_method !== facts.sampling_method ||
-    interpretation.exact_boundary_calculation_applied !== false) {
+    interpretation.exact_boundary_calculation_applied !== false
+  ) {
     throw new Error("Month sampling contract is invalid.");
   }
   const indices = array(interpretation.indices, "month indices");
@@ -168,9 +196,11 @@ export function assertLifeProfileReportContract(value: unknown) {
   exactKeys(report, ["facts", "interpretation"], "life profile report");
   const facts = object(report.facts, "life profile facts");
   const interpretation = object(report.interpretation, "life profile interpretation");
-  if (facts.facts_version !== "life_profile_facts_v1" ||
+  if (
+    facts.facts_version !== "life_profile_facts_v1" ||
     interpretation.facts_version !== "life_profile_facts_v1" ||
-    interpretation.interpretation_version !== "life_profile_interpretation_v1") {
+    interpretation.interpretation_version !== "life_profile_interpretation_v1"
+  ) {
     throw new Error("Life Profile versions are unsupported.");
   }
   assertPrediction(facts.source_prediction, "natal");
@@ -190,10 +220,13 @@ export function assertYearAnalysisReportContract(value: unknown, year: number) {
   exactKeys(report, ["facts", "interpretation"], "year analysis report");
   const facts = object(report.facts, "year facts");
   const interpretation = object(report.interpretation, "year interpretation");
-  if (facts.facts_version !== "period_analysis_facts_v1" ||
+  if (
+    facts.facts_version !== "period_analysis_facts_v1" ||
     interpretation.facts_version !== "period_analysis_facts_v1" ||
     interpretation.interpretation_version !== "period_analysis_interpretation_v1" ||
-    facts.year !== year || interpretation.year !== year) {
+    facts.year !== year ||
+    interpretation.year !== year
+  ) {
     throw new Error("Year analysis versions or target year are invalid.");
   }
   const factMonths = array(facts.months, "year fact months");
@@ -207,9 +240,12 @@ export function assertYearAnalysisReportContract(value: unknown, year: number) {
   const overview = array(interpretation.overview_indices, "year overview indices");
   if (overview.length !== 7) throw new Error("Year analysis requires seven overview indices.");
   overview.forEach((item) => assertIndex(item));
-  if (!Array.isArray(interpretation.strongest_months) ||
+  if (
+    !Array.isArray(interpretation.strongest_months) ||
     !Array.isArray(interpretation.challenging_months) ||
-    interpretation.strongest_months.length > 3 || interpretation.challenging_months.length > 3) {
+    interpretation.strongest_months.length > 3 ||
+    interpretation.challenging_months.length > 3
+  ) {
     throw new Error("Year strongest/challenging month lists are invalid.");
   }
   assertNoRawBirthKeys(report);

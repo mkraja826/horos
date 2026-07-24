@@ -61,8 +61,8 @@ try {
     Assert-Contains $index 'if (!isPhase4AnalysisEnabled())' "Analysis routes do not fail closed."
     Assert-Contains $index 'PREMIUM_REQUIRED' "Analysis premium gate is missing."
 
-    Assert-Contains $provider 'civil_month_midpoint_local_noon_v1' "Deterministic month sampling is missing."
-    Assert-Contains $provider 'exact_boundary_calculation_applied' "Exact-boundary limitation is missing."
+    Assert-Contains $contract 'civil_month_midpoint_local_noon_v1' "Deterministic month sampling is missing."
+    Assert-Contains $contract 'exact_boundary_calculation_applied' "Exact-boundary limitation is missing."
     Assert-Contains $provider 'storedBirthPayload' "Stored birth adapter is missing."
     if ($provider.Contains("full_name") -or $provider.Contains("birth_place") -or $provider.Contains("current_city")) {
         throw "Phase 4 provider payload includes identity or place-label fields."

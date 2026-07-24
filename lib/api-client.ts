@@ -5,6 +5,8 @@ import {
 } from "@/lib/secure-storage";
 import type {
   BirthChart,
+  CompatibilityReport,
+  CompatibilityRequest,
   HoroscopeReading,
   Panchang,
   SubscriptionState,
@@ -140,7 +142,7 @@ export type OnboardingPayload = {
 
 export const api = {
   requestOtp: (identifier: string) =>
-    request<{ requiresOtp: true; challengeId: string }>('/auth/login', {
+    request<{ requiresOtp: true; challengeId: string }>("/auth/login", {
       method: "POST",
       authenticated: false,
       body: JSON.stringify({ identifier }),
@@ -176,6 +178,11 @@ export const api = {
   monthly: () => request<HoroscopeReading>("/horoscope/monthly"),
   birthChart: () => request<BirthChart>("/birth-chart"),
   panchang: () => request<Panchang>("/panchang/today"),
+  compatibilityReport: (payload: CompatibilityRequest) =>
+    request<CompatibilityReport>("/compatibility/report", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   subscriptionStatus: () => request<SubscriptionState>("/subscription/status"),
   verifySubscription: (platform: "android" | "ios", productId: string) =>

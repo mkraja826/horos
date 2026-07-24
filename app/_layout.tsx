@@ -49,6 +49,8 @@ function Navigation() {
       <Stack.Screen name="daily" options={{ title: "Today’s guidance" }} />
       <Stack.Screen name="weekly" options={{ title: "Weekly guidance" }} />
       <Stack.Screen name="monthly" options={{ title: "Monthly guidance" }} />
+      <Stack.Screen name="compatibility" options={{ title: "Kundli compatibility" }} />
+      <Stack.Screen name="compatibility-report" options={{ title: "Compatibility report" }} />
       <Stack.Screen name="subscription" options={{ title: "Your plan", presentation: "modal" }} />
       <Stack.Screen name="privacy" options={{ title: "Privacy policy" }} />
       <Stack.Screen name="terms" options={{ title: "Terms of use" }} />

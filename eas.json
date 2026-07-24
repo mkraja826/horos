@@ -19,7 +19,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_APP_ENV": "preview"
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_PHASE4_COMPATIBILITY_ENABLED": "false"
       }
     },
     "private-beta": {
@@ -29,7 +30,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api",
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_ALLOW_DEMO_DATA": "false"
+        "EXPO_PUBLIC_ALLOW_DEMO_DATA": "false",
+        "EXPO_PUBLIC_PHASE4_COMPATIBILITY_ENABLED": "false"
       },
       "android": {
         "buildType": "apk"
@@ -41,7 +43,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_ALLOW_DEMO_DATA": "false"
+        "EXPO_PUBLIC_ALLOW_DEMO_DATA": "false",
+        "EXPO_PUBLIC_PHASE4_COMPATIBILITY_ENABLED": "false"
       },
       "android": {
         "buildType": "app-bundle"

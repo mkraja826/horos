@@ -28,6 +28,8 @@ assert(profile.env?.EXPO_PUBLIC_APP_ENV === "production",
   "The private-beta application environment must be production.");
 assert(String(profile.env?.EXPO_PUBLIC_ALLOW_DEMO_DATA) === "false",
   "The private-beta profile must disable demo data.");
+assert(String(profile.env?.EXPO_PUBLIC_PHASE4_COMPATIBILITY_ENABLED) === "false",
+  "The private-beta profile must keep the Phase 4 compatibility UI disabled.");
 
 for (const name of EXTERNAL_PUBLIC_VARIABLES) {
   assert(!(name in (profile.env ?? {})),
@@ -37,5 +39,6 @@ for (const name of EXTERNAL_PUBLIC_VARIABLES) {
 console.log("Private-beta EAS profile: PASS");
 console.log("Hosted API: pinned");
 console.log("Demo data: disabled");
+console.log("Compatibility UI: disabled");
 console.log("Android artifact: internal APK");
 console.log("EAS and RevenueCat public identifiers: external");

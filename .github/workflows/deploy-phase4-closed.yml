@@ -2,7 +2,7 @@ name: Deploy Phase 4 Closed
 
 on:
   push:
-    branches: [ops/deploy-phase4-closed]
+    branches: [main]
 
 permissions:
   contents: read

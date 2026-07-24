@@ -1,0 +1,45 @@
+name: Hosted v17 compatibility closed smoke
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify hosted v17 remains healthy and compatibility stays closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://hdaugtypjpniesdgyral.supabase.co/functions/v1/horos-api"
+
+          health_status="$(curl --silent --show-error --output health.json --write-out '%{http_code}' "$base/health")"
+          test "$health_status" = "200"
+          jq -e '
+            .status == "ok" and
+            .backend == "supabase" and
+            .astroProviderConfigured == true and
+            .phase4CompatibilityEnabled == false
+          ' health.json >/dev/null
+
+          for route in compatibility/facts compatibility/report; do
+            status="$(curl --silent --show-error \
+              --output "${route//\//-}.json" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --header 'Content-Type: application/json' \
+              --data '{}' \
+              "$base/$route")"
+            test "$status" = "401"
+            jq -e '.code == "UNAUTHORIZED"' "${route//\//-}.json" >/dev/null
+          done
+
+          profile_status="$(curl --silent --show-error --output profile.json --write-out '%{http_code}' "$base/profile/me")"
+          test "$profile_status" = "401"
+          jq -e '.code == "UNAUTHORIZED"' profile.json >/dev/null
+
+          echo "HOROS_HOSTED_V17_COMPATIBILITY_CLOSED=PASS"

@@ -69,6 +69,13 @@ jobs:
           $content = Get-Content ./scripts/verify-private-beta-local.ps1 -Raw
           [scriptblock]::Create($content) | Out-Null
 
+      - name: Parse hosted Phase 4 analysis acceptance scripts
+        shell: pwsh
+        run: |
+          $content = Get-Content ./scripts/run-hosted-phase4-analysis-acceptance.ps1 -Raw
+          [scriptblock]::Create($content) | Out-Null
+          node --check ./scripts/verify-hosted-phase4-analysis.mjs
+
       - name: Set up Deno
         uses: denoland/setup-deno@v2
         with:

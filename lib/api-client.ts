@@ -6,7 +6,6 @@ import {
 import type {
   BirthChart,
   CompatibilityReport,
-  CompatibilityRequest,
   HoroscopeReading,
   Panchang,
   SubscriptionState,
@@ -17,6 +16,11 @@ import type {
   MonthAnalysisReport,
   YearAnalysisReport,
 } from "@/types/phase4-analysis";
+import type {
+  CompatibilityRequest,
+  SaveCompatibilityPartnerRequest,
+  SavedCompatibilityPartner,
+} from "@/types/saved-partners";
 
 const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/$/, "");
 export const isApiConfigured = Boolean(configuredUrl);
@@ -187,6 +191,17 @@ export const api = {
     request<CompatibilityReport>("/compatibility/report", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+  savedCompatibilityPartners: () =>
+    request<{ partners: SavedCompatibilityPartner[] }>("/compatibility/partners"),
+  saveCompatibilityPartner: (payload: SaveCompatibilityPartnerRequest) =>
+    request<{ partner: SavedCompatibilityPartner }>("/compatibility/partners", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  deleteCompatibilityPartner: (partnerId: string) =>
+    request<{ deleted: true }>(`/compatibility/partners/${encodeURIComponent(partnerId)}`, {
+      method: "DELETE",
     }),
   lifeProfile: () =>
     request<LifeProfileReport>("/analysis/life-profile", { timeoutMs: 35000 }),

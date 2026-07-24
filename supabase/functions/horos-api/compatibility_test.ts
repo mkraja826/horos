@@ -153,9 +153,10 @@ Deno.test("Compatibility request accepts an ephemeral partner without names", ()
 
   assertEquals(parsed.subjectRole, "unspecified", "subject role");
   assertEquals(parsed.partnerRole, "unspecified", "partner role");
-  assertEquals(parsed.partnerBirth.timeOfBirth, "08:15:00", "normalized time");
-  assertEquals(parsed.partnerBirth.altitudeMeters, 500, "altitude");
-  assert(!("fullName" in parsed.partnerBirth), "partner names must not be accepted");
+  assert(parsed.partnerBirth !== null, "direct birth must be present");
+  assertEquals(parsed.partnerBirth?.timeOfBirth, "08:15:00", "normalized time");
+  assertEquals(parsed.partnerBirth?.altitudeMeters, 500, "altitude");
+  assert(!("fullName" in (parsed.partnerBirth ?? {})), "partner names must not be accepted");
 });
 
 Deno.test("Compatibility request requires complete distinct traditional roles", () => {
@@ -197,12 +198,18 @@ Deno.test("Compatibility request rejects invalid dates and unknown fields", () =
 });
 
 Deno.test("Compatibility provider body uses stored user birth and no identity fields", () => {
-  const request = parseCompatibilityRequest({
+  const selection = parseCompatibilityRequest({
     ...requestBody(),
     subjectRole: "bride",
     partnerRole: "groom",
   });
-  const body = buildCompatibilityProviderBody(subjectBirth(), request);
+  assert(selection.partnerBirth !== null, "direct birth must be present");
+  if (!selection.partnerBirth) throw new Error("Direct partner birth is missing.");
+  const body = buildCompatibilityProviderBody(subjectBirth(), {
+    partnerBirth: selection.partnerBirth,
+    subjectRole: selection.subjectRole,
+    partnerRole: selection.partnerRole,
+  });
   const subject = body.subject_birth as Record<string, unknown>;
   const partner = body.partner_birth as Record<string, unknown>;
 

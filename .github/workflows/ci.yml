@@ -28,6 +28,10 @@ jobs:
         shell: pwsh
         run: ./scripts/audit-phase4-analysis-contract.ps1
 
+      - name: Audit saved partner consent and deletion
+        shell: pwsh
+        run: ./scripts/audit-saved-partner-contract.ps1
+
       - name: Audit maintenance health monitoring
         shell: pwsh
         run: ./scripts/audit-maintenance-health.ps1
@@ -78,6 +82,9 @@ jobs:
 
       - name: Test Phase 4 compatibility gateway contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_test.ts
+
+      - name: Test saved partner consent contract
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/saved_partner_contract_test.ts
 
       - name: Test Phase 4 compatibility report contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_report_test.ts

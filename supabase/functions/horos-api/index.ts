@@ -47,6 +47,12 @@ import {
 } from "./prediction_contract.ts";
 import { createProfile, deleteAccount, readProfile, updateProfile } from "./profiles.ts";
 import {
+  createSavedPartner,
+  deleteSavedPartner,
+  listSavedPartners,
+  resolveCompatibilitySelection,
+} from "./saved_partners.ts";
+import {
   processRevenueCatWebhook,
   verifyRevenueCat,
   verifyWebhookAuthorization,
@@ -301,12 +307,35 @@ async function route(request: Request): Promise<Response> {
     return json(request, await horoscope(user.id, validatePeriod(path.split("/").pop() ?? "")));
   }
 
+  if (path === "/compatibility/partners") {
+    if (!isPhase4CompatibilityEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    await compatibilityAccess(user.id);
+    if (request.method === "GET") {
+      return json(request, await listSavedPartners(user.id));
+    }
+    if (request.method === "POST") {
+      return json(request, await createSavedPartner(user.id, await bodyJson(request)), 201);
+    }
+  }
+
+  if (request.method === "DELETE" && path.startsWith("/compatibility/partners/")) {
+    if (!isPhase4CompatibilityEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    await compatibilityAccess(user.id);
+    const partnerId = decodeURIComponent(path.slice("/compatibility/partners/".length));
+    return json(request, await deleteSavedPartner(user.id, partnerId));
+  }
+
   if (request.method === "POST" && path === "/compatibility/facts") {
     if (!isPhase4CompatibilityEnabled()) {
       throw new ResponseError("API route not found.", 404, "NOT_FOUND");
     }
     const birth = await compatibilityAccess(user.id);
-    const compatibility = parseCompatibilityRequest(await bodyJson(request));
+    const selection = parseCompatibilityRequest(await bodyJson(request));
+    const compatibility = await resolveCompatibilitySelection(user.id, selection);
     return json(
       request,
       await calculateCompatibilityFacts(birth, compatibility, user.id),
@@ -318,7 +347,8 @@ async function route(request: Request): Promise<Response> {
       throw new ResponseError("API route not found.", 404, "NOT_FOUND");
     }
     const birth = await compatibilityAccess(user.id);
-    const compatibility = parseCompatibilityRequest(await bodyJson(request));
+    const selection = parseCompatibilityRequest(await bodyJson(request));
+    const compatibility = await resolveCompatibilitySelection(user.id, selection);
     return json(
       request,
       await calculateCompatibilityReport(birth, compatibility, user.id),

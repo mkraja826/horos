@@ -8,9 +8,12 @@ import {
   assertCompatibilityFactsContract,
   COMPATIBILITY_CALCULATION_PROFILE,
 } from "./compatibility_contract.ts";
+import { assertCompatibilityReportContract } from "./compatibility_report_contract.ts";
 import type { BirthDetailsRow } from "./types.ts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type CompatibilityProviderPath = "facts" | "report";
 
 function providerUrl(): string {
   const value = Deno.env.get("ASTRO_API_URL")?.trim().replace(/\/$/, "");
@@ -83,7 +86,8 @@ export function buildCompatibilityProviderBody(
   };
 }
 
-async function requestCompatibilityFacts(
+async function requestCompatibility(
+  path: CompatibilityProviderPath,
   body: Record<string, unknown>,
   astroConsumerId: string,
 ): Promise<{ payload: Record<string, unknown>; requestId: string }> {
@@ -92,7 +96,7 @@ async function requestCompatibilityFacts(
   const requestId = `horos-${crypto.randomUUID()}`;
   try {
     const response = await fetch(
-      `${providerUrl()}/v1/classical/varahamihira_v1/compatibility/facts`,
+      `${providerUrl()}/v1/classical/varahamihira_v1/compatibility/${path}`,
       {
         method: "POST",
         signal: controller.signal,
@@ -149,21 +153,41 @@ async function requestCompatibilityFacts(
   }
 }
 
+function providerEnvelope(payload: Record<string, unknown>, requestId: string) {
+  return {
+    ...payload,
+    generatedAt: new Date().toISOString(),
+    calculationMode: "provider" as const,
+    provider: { requestId },
+  };
+}
+
 export async function calculateCompatibilityFacts(
   subjectBirth: BirthDetailsRow,
   request: CompatibilityRequestInput,
   astroConsumerId: string,
 ) {
-  const response = await requestCompatibilityFacts(
+  const response = await requestCompatibility(
+    "facts",
     buildCompatibilityProviderBody(subjectBirth, request),
     astroConsumerId,
   );
   const expectComplete = request.subjectRole !== "unspecified";
   assertCompatibilityFactsContract(response.payload, expectComplete);
-  return {
-    facts: response.payload,
-    generatedAt: new Date().toISOString(),
-    calculationMode: "provider" as const,
-    provider: { requestId: response.requestId },
-  };
+  return providerEnvelope({ facts: response.payload }, response.requestId);
+}
+
+export async function calculateCompatibilityReport(
+  subjectBirth: BirthDetailsRow,
+  request: CompatibilityRequestInput,
+  astroConsumerId: string,
+) {
+  const response = await requestCompatibility(
+    "report",
+    buildCompatibilityProviderBody(subjectBirth, request),
+    astroConsumerId,
+  );
+  const expectComplete = request.subjectRole !== "unspecified";
+  assertCompatibilityReportContract(response.payload, expectComplete);
+  return providerEnvelope(response.payload, response.requestId);
 }

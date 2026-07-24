@@ -3,13 +3,13 @@ import {
   type CompatibilityRequestInput,
   type CompatibilityRequestSelection,
   objectValue,
-  parseCompatibilityBirthInput,
-  rejectUnknownFields,
-  stringValue,
 } from "./compatibility.ts";
 import { adminClient, ResponseError } from "./db.ts";
+import {
+  parseSavedPartnerCreate,
+  parseSavedPartnerId,
+} from "./saved_partner_contract.ts";
 
-const CREATE_FIELDS = new Set(["label", "consentToSave", "partnerBirth"]);
 const MAX_SAVED_PARTNERS = 10;
 
 type SavedPartnerRow = {
@@ -35,27 +35,9 @@ export type SavedPartnerListItem = {
   createdAt: string;
 };
 
-export type SavedPartnerCreateInput = {
-  label: string;
-  partnerBirth: CompatibilityBirthInput;
-};
-
-export function parseSavedPartnerCreate(body: Record<string, unknown>): SavedPartnerCreateInput {
-  rejectUnknownFields(body, CREATE_FIELDS, "Saved partner request");
-  if (body.consentToSave !== true) {
-    throw new ResponseError(
-      "Explicit consent is required before partner birth details can be saved.",
-      400,
-      "SAVED_PARTNER_CONSENT_REQUIRED",
-    );
-  }
-  return {
-    label: stringValue(body.label, "Partner label", 60),
-    partnerBirth: parseCompatibilityBirthInput(body.partnerBirth),
-  };
-}
-
-function listItem(row: Pick<SavedPartnerRow, "id" | "label" | "date_of_birth" | "timezone" | "created_at">): SavedPartnerListItem {
+function listItem(
+  row: Pick<SavedPartnerRow, "id" | "label" | "date_of_birth" | "timezone" | "created_at">,
+): SavedPartnerListItem {
   return {
     id: row.id,
     label: row.label,
@@ -133,7 +115,7 @@ export async function deleteSavedPartner(
   userId: string,
   partnerId: string,
 ): Promise<{ deleted: true }> {
-  const normalized = stringValue(partnerId, "Saved partner ID", 36);
+  const normalized = parseSavedPartnerId(partnerId);
   const result = await adminClient
     .from("saved_compatibility_partners")
     .delete()

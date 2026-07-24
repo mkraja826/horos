@@ -25,5 +25,6 @@ jobs:
           const values = Object.values(result.routes ?? {});
           if (values.length !== 3) throw new Error('Route probe is incomplete.');
           const current = values.every((item) => item.status === 422 && item.detailType === 'validation');
+          console.log(`HOST ${result.hostCategory} CNAME ${result.cnameCategory} HINT ${result.providerHintCategory}`);
           if (!current) process.exitCode = 2;
           NODE

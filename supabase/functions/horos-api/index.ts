@@ -1,4 +1,20 @@
 import {
+  isPhase4AnalysisEnabled,
+  parseTargetMonth,
+  parseTargetYear,
+} from "./analysis.ts";
+import {
+  analysisChartFingerprint,
+  analysisPeriodKey,
+  readAnalysisCache,
+  writeAnalysisCache,
+} from "./analysis_cache.ts";
+import {
+  calculateLifeProfileReport,
+  calculateMonthAnalysisReport,
+  calculateYearAnalysisReport,
+} from "./analysis_provider.ts";
+import {
   AstroProviderError,
   calculatePanchang,
   calculatePrediction,
@@ -196,11 +212,48 @@ async function compatibilityAccess(userId: string) {
   return rows.birth;
 }
 
+async function phase4Analysis(
+  userId: string,
+  kind: "life_profile" | "month" | "year",
+  year?: number,
+  month?: number,
+) {
+  const [rows, subscription] = await Promise.all([
+    getProfileRows(userId),
+    getSubscription(userId),
+  ]);
+  if (!rows) {
+    throw new ResponseError("Complete your birth profile first.", 404, "PROFILE_NOT_FOUND");
+  }
+  if (!subscription.isPremium) {
+    throw new ResponseError(
+      "Life Profile and selectable period analysis require complete access.",
+      402,
+      "PREMIUM_REQUIRED",
+    );
+  }
+
+  const localDate = localDateInTimezone(rows.birth.timezone);
+  const key = analysisPeriodKey(kind, localDate, year, month);
+  const fingerprint = await analysisChartFingerprint(rows.birth);
+  const cached = await readAnalysisCache(userId, kind, key, fingerprint);
+  if (cached) return cached;
+
+  const report = kind === "life_profile"
+    ? await calculateLifeProfileReport(rows.birth, localDate, userId)
+    : kind === "month"
+    ? await calculateMonthAnalysisReport(rows.birth, year!, month!, userId)
+    : await calculateYearAnalysisReport(rows.birth, year!, userId);
+  await writeAnalysisCache(userId, kind, key, fingerprint, report);
+  return report;
+}
+
 async function route(request: Request): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
 
+  const url = new URL(request.url);
   const path = requestPath(request);
   if (request.method === "GET" && (path === "/" || path === "/health")) {
     return json(request, {
@@ -210,6 +263,7 @@ async function route(request: Request): Promise<Response> {
       astroProvider: "skyfield_jpl_de440s",
       astroProviderConfigured: isAstroProviderConfigured(),
       phase4CompatibilityEnabled: isPhase4CompatibilityEnabled(),
+      phase4AnalysisEnabled: isPhase4AnalysisEnabled(),
       time: new Date().toISOString(),
     });
   }
@@ -269,6 +323,30 @@ async function route(request: Request): Promise<Response> {
       request,
       await calculateCompatibilityReport(birth, compatibility, user.id),
     );
+  }
+
+  if (request.method === "GET" && path === "/analysis/life-profile") {
+    if (!isPhase4AnalysisEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    return json(request, await phase4Analysis(user.id, "life_profile"));
+  }
+
+  if (request.method === "GET" && path === "/analysis/month") {
+    if (!isPhase4AnalysisEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    const year = parseTargetYear(url.searchParams.get("year"));
+    const month = parseTargetMonth(url.searchParams.get("month"));
+    return json(request, await phase4Analysis(user.id, "month", year, month));
+  }
+
+  if (request.method === "GET" && path === "/analysis/year") {
+    if (!isPhase4AnalysisEnabled()) {
+      throw new ResponseError("API route not found.", 404, "NOT_FOUND");
+    }
+    const year = parseTargetYear(url.searchParams.get("year"));
+    return json(request, await phase4Analysis(user.id, "year", year));
   }
 
   if (request.method === "GET" && path === "/birth-chart") {

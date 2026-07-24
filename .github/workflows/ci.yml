@@ -83,7 +83,20 @@ jobs:
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/compatibility_report_test.ts
 
       - name: Test Phase 4 Life Profile and period contracts
-        run: deno test --allow-env --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/analysis_test.ts
+        run: |
+          deno test --allow-env \
+            --junit-path=analysis-junit.xml \
+            --config supabase/functions/horos-api/deno.json \
+            supabase/functions/horos-api/analysis_test.ts
+
+      - name: Upload Phase 4 test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase4-analysis-junit
+          path: analysis-junit.xml
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Test prediction cache contract
         run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/prediction_contract_test.ts

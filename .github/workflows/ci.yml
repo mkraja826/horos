@@ -24,6 +24,10 @@ jobs:
         shell: pwsh
         run: ./scripts/audit-data-retention-contract.ps1
 
+      - name: Audit Phase 4 analysis release boundaries
+        shell: pwsh
+        run: ./scripts/audit-phase4-analysis-contract.ps1
+
       - name: Audit maintenance health monitoring
         shell: pwsh
         run: ./scripts/audit-maintenance-health.ps1

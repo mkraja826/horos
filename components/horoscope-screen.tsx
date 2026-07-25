@@ -9,11 +9,19 @@ import { PremiumLock } from "@/components/premium-lock";
 import { Screen } from "@/components/screen";
 import { SectionCard } from "@/components/section-card";
 import { radius, spacing } from "@/constants/theme";
+import {
+  consumerAction,
+  consumerDomainTitle,
+  consumerPatternLabel,
+  consumerResultSummary,
+  consumerSignalLabel,
+  consumerTone,
+  type ConsumerTone,
+} from "@/lib/today-guidance";
 import { useApp } from "@/providers/app-provider";
 import { useAppTheme } from "@/providers/theme-provider";
 import type {
   HoroscopeReading,
-  PredictionDomainResult,
   PredictionEvidence,
 } from "@/types/models";
 
@@ -24,25 +32,6 @@ type HoroscopeScreenProps = {
   onRetry: () => void;
   periodRequiresPremium?: boolean;
 };
-
-const domainTitles: Record<string, string> = {
-  overall: "Overall outlook",
-  career: "Career & work",
-  money_resources: "Money & resources",
-  relationships_marriage: "Relationships & marriage",
-  family_home: "Family & home",
-  education_creativity: "Education & creativity",
-  wellbeing: "Wellbeing tendencies",
-  travel_change: "Travel & change",
-  spirituality: "Spirituality",
-};
-
-function outlookLabel(outlook: PredictionDomainResult["outlook"]): string {
-  if (outlook === "insufficient" || outlook === "insufficient_evidence") {
-    return "Insufficient evidence";
-  }
-  return outlook.charAt(0).toUpperCase() + outlook.slice(1);
-}
 
 function EvidenceList({
   title,
@@ -69,11 +58,6 @@ function EvidenceList({
         >
           <AppText>{factor.statement}</AppText>
           <AppText variant="caption" muted>{factor.reason}</AppText>
-          {factor.source_rule_ids.length ? (
-            <AppText variant="caption" muted>
-              Sources: {factor.source_rule_ids.join(", ")}
-            </AppText>
-          ) : null}
         </View>
       ))}
     </View>
@@ -100,6 +84,13 @@ export function HoroscopeScreen({
 
   if (loading) return <Screen><LoadingCard /></Screen>;
   if (error || !reading) return <Screen><QueryError onRetry={onRetry} /></Screen>;
+
+  const toneColor = (tone: ConsumerTone) => {
+    if (tone === "supportive") return colors.success;
+    if (tone === "sensitive") return colors.maroon;
+    if (tone === "balanced") return colors.warning;
+    return colors.textMuted;
+  };
 
   if ("results" in reading) {
     return (
@@ -131,78 +122,95 @@ export function HoroscopeScreen({
             </View>
             <View style={{ flex: 1, gap: spacing.xs }}>
               <AppText variant="caption" color="#DCD3C2">
-                {reading.period === "daily" ? "Current reading" : `${reading.period} reading`}
+                {reading.period === "daily" ? "Today’s guidance" : `${reading.period} guidance`}
               </AppText>
               <AppText variant="heading" color="#FFF8E9">
-                Varāhamihira interpretation
+                Your personalized Vedic reading
               </AppText>
             </View>
           </View>
           <AppText color="#E9E1D5">
-            Calculated from your birth chart and active Vimśottarī daśā. Findings are shown directly, including challenging or insufficient evidence.
-          </AppText>
-          <AppText variant="caption" color="#DCD3C2">
-            Profile: {reading.classical_profile} · Engine: {reading.engine_version}
+            Built from your birth chart and active Vimśottarī daśā. Patterns are shown as
+            supportive, mixed, sensitive or quiet—not as guarantees.
           </AppText>
         </Card>
 
         {reading.results.map((result) => {
-          const outlookColor = result.outlook === "favourable"
-            ? colors.success
-            : result.outlook === "challenging"
-            ? colors.maroon
-            : result.outlook === "mixed"
-            ? colors.warning
-            : colors.textMuted;
+          const tone = consumerTone(result);
+          const color = toneColor(tone);
           return (
-            <Card key={result.domain} style={{ padding: spacing.lg, gap: spacing.lg }}>
+            <Card
+              key={result.domain}
+              tone={tone === "supportive" ? "blue" : tone === "sensitive" ? "warm" : "default"}
+              style={{ padding: spacing.lg, gap: spacing.lg }}
+            >
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
                 <View style={{ flex: 1, gap: spacing.xs }}>
-                  <AppText variant="heading">{domainTitles[result.domain] ?? result.domain}</AppText>
-                  <AppText variant="label" color={outlookColor}>
-                    {outlookLabel(result.outlook)} · {result.strength} strength
+                  <AppText variant="heading">{consumerDomainTitle(result.domain)}</AppText>
+                  <AppText variant="label" color={color}>
+                    {consumerSignalLabel(result)} · {consumerPatternLabel(result)}
                   </AppText>
                 </View>
-                <View
-                  style={{
-                    borderRadius: radius.pill,
-                    backgroundColor: colors.surfaceMuted,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                  }}
-                >
-                  <AppText variant="caption" style={{ fontVariant: ["tabular-nums"] }}>
-                    Net {result.net_score.toFixed(2)}
-                  </AppText>
-                </View>
+                <AppIcon
+                  name={tone === "supportive" ? "sparkle" : tone === "sensitive" ? "alert" : "leaf"}
+                  size={24}
+                  color={color}
+                />
               </View>
 
-              <AppText>{result.statement}</AppText>
+              <AppText>{consumerResultSummary(result)}</AppText>
+
               <View style={{ gap: spacing.sm }}>
-                <AppText variant="label">Advisory</AppText>
-                <AppText>{result.advisory}</AppText>
-                {result.favourable_timing ? (
-                  <AppText color={colors.success}>{result.favourable_timing}</AppText>
-                ) : null}
-                {result.challenging_timing ? (
-                  <AppText color={colors.maroon}>{result.challenging_timing}</AppText>
-                ) : null}
+                <AppText variant="label">Practical guidance</AppText>
+                <AppText>{consumerAction(result)}</AppText>
               </View>
-              <EvidenceList title="Supporting factors" evidence={result.supporting_factors} color={colors.success} />
-              <EvidenceList title="Challenging factors" evidence={result.challenging_factors} color={colors.maroon} />
-              <EvidenceList title="Context and limitations" evidence={result.contextual_factors} color={colors.warning} />
+
+              {result.favourable_timing || result.challenging_timing ? (
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  {result.favourable_timing ? (
+                    <Card tone="blue" style={{ flex: 1, padding: spacing.md }}>
+                      <AppText variant="caption" muted>Supportive window</AppText>
+                      <AppText variant="label">{result.favourable_timing}</AppText>
+                    </Card>
+                  ) : null}
+                  {result.challenging_timing ? (
+                    <Card tone="warm" style={{ flex: 1, padding: spacing.md }}>
+                      <AppText variant="caption" muted>Stay mindful</AppText>
+                      <AppText variant="label">{result.challenging_timing}</AppText>
+                    </Card>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {result.supporting_factors.length ||
+              result.challenging_factors.length ||
+              result.contextual_factors.length ? (
+                <View style={{ gap: spacing.md }}>
+                  <AppText variant="heading">Why this guidance?</AppText>
+                  <EvidenceList
+                    title="Supportive factors"
+                    evidence={result.supporting_factors}
+                    color={colors.success}
+                  />
+                  <EvidenceList
+                    title="Factors needing care"
+                    evidence={result.challenging_factors}
+                    color={colors.maroon}
+                  />
+                  <EvidenceList
+                    title="Context"
+                    evidence={result.contextual_factors}
+                    color={colors.warning}
+                  />
+                </View>
+              ) : null}
             </Card>
           );
         })}
 
-        <SectionCard title="Important disclaimer" icon="alert">
+        <SectionCard title="Interpretation boundary" icon="shield">
           <AppText muted>{reading.disclaimer}</AppText>
         </SectionCard>
-
-        <AppText variant="caption" muted style={{ textAlign: "center" }}>
-          Calculation profile: {reading.calculation_profile}{"\n"}
-          Request: {reading.provider.requestId}
-        </AppText>
       </Screen>
     );
   }
@@ -254,8 +262,8 @@ export function HoroscopeScreen({
 
       {reading.period === "daily" && (!periodRequiresPremium || !locked) ? (
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <Card tone="warm" style={{ flex: 1, padding: spacing.md }}>
-            <AppText variant="caption" muted>Favorable time</AppText>
+          <Card tone="blue" style={{ flex: 1, padding: spacing.md }}>
+            <AppText variant="caption" muted>Supportive time</AppText>
             <AppText variant="label" style={{ fontVariant: ["tabular-nums"] }}>{reading.auspiciousTime}</AppText>
           </Card>
           <Card tone="warm" style={{ flex: 1, padding: spacing.md }}>
@@ -275,7 +283,7 @@ export function HoroscopeScreen({
 
       {(!locked || !periodRequiresPremium) && (
         <SectionCard
-          title={reading.period === "daily" ? "Today’s remedy" : `${reading.period === "weekly" ? "Weekly" : "Monthly"} remedy`}
+          title={reading.period === "daily" ? "Today’s action" : `${reading.period === "weekly" ? "Weekly" : "Monthly"} action`}
           icon="flame"
         >
           <AppText muted>{reading.remedy}</AppText>
@@ -289,7 +297,8 @@ export function HoroscopeScreen({
       )}
 
       <AppText variant="caption" muted style={{ textAlign: "center" }}>
-        Guidance is offered for reflection. Please use your own judgment for personal, medical, legal and financial decisions.
+        Guidance is offered for reflection. Use your own judgment for personal, medical, legal
+        and financial decisions.
       </AppText>
     </Screen>
   );

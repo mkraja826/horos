@@ -1,0 +1,29 @@
+name: Consumer guidance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/(tabs)/home.tsx"
+      - "components/horoscope-screen.tsx"
+      - "lib/today-guidance.ts"
+      - "supabase/functions/horos-api/consumer_guidance_test.ts"
+      - ".github/workflows/consumer-guidance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-consumer-guidance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Test consumer Today guidance contract
+        run: deno test --config supabase/functions/horos-api/deno.json supabase/functions/horos-api/consumer_guidance_test.ts

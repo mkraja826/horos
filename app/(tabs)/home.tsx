@@ -33,6 +33,10 @@ export default function HomeScreen() {
     reading.data && "results" in reading.data
       ? buildProviderTodayGuidance(reading.data)
       : null;
+  const editorial =
+    reading.data && !("results" in reading.data)
+      ? reading.data
+      : null;
 
   useEffect(() => {
     if (!isAuthenticated) router.replace("/welcome");
@@ -203,7 +207,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/daily")}
           />
         </>
-      ) : (
+      ) : editorial ? (
         <>
           <Card
             style={{
@@ -231,9 +235,9 @@ export default function HomeScreen() {
               </AppText>
             </View>
             <AppText variant="title" color="#FFF8E9">
-              {reading.data.focus}
+              {editorial.focus}
             </AppText>
-            <AppText color="#E8DFD2">{reading.data.summary}</AppText>
+            <AppText color="#E8DFD2">{editorial.summary}</AppText>
             <AppButton
               label="View full daily guidance"
               variant="secondary"
@@ -246,12 +250,12 @@ export default function HomeScreen() {
               <IconBadge name="flame" />
               <View style={{ flex: 1, gap: spacing.xs }}>
                 <AppText variant="label">A simple action</AppText>
-                <AppText muted>{reading.data.remedy}</AppText>
+                <AppText muted>{editorial.remedy}</AppText>
               </View>
             </View>
           </Card>
         </>
-      )}
+      ) : null}
 
       <View style={{ gap: spacing.md }}>
         <AppText variant="heading">Look ahead</AppText>

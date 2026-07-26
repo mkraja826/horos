@@ -20,7 +20,7 @@ function, secret, authentication, EAS, or hosting state.
 | Component | Current state | Evidence and remaining gate |
 |---|---|---|
 | Astro API | Deployed; provider reachable through Horos; not independently validated | Live Horos health returned HTTP 200 with `astroProvider=skyfield_jpl_de440s` and `astroProviderConfigured=true`. Astro still has zero two-source-validated frozen cases. |
-| Horos Edge Function | Deployed and enabled | Supabase reports active `horos-api` version 28. Public health passed. Gateway JWT verification is disabled by design; protected routes enforce authentication inside the function. |
+| Horos Edge Function | Deployed and enabled | Supabase reports active `horos-api` version 28. Public health passed. Gateway JWT verification is disabled by design; live unauthenticated probes of `/profile`, `/auth/refresh`, and `/subscription/webhook` each returned HTTP 401. |
 | Supabase migrations | Deployed | All 18 repository migrations have corresponding live migration records. Live migration timestamps differ for several later migrations, but their ordered names and controls match. |
 | Required Edge secrets | Partially verified | Health proves the Astro provider configuration is usable. Secret values were not read. RevenueCat credentials and OTP-provider configuration remain unverified. |
 | EAS configuration | Implemented; production-safety fix pending merge | Production/private-beta fail-closed validation is implemented in draft PR #55. EAS project ID and RevenueCat public SDK keys remain operator-owned gates. No production build was created in this phase. |
@@ -44,6 +44,8 @@ Read-only catalog queries and Supabase advisors produced these results:
   analysis tables have no client grants or deny-all client policies;
 - all 12 `SECURITY DEFINER` functions deny execution to `PUBLIC`, `anon`, and
   `authenticated`, and pin their search path;
+- live protected-profile, invalid-refresh, and unsigned-webhook probes all
+  failed closed with HTTP 401;
 - RevenueCat events have a unique primary key and atomic ordering logic for
   idempotent processing;
 - daily retention and hourly maintenance-watchdog cron jobs are active;

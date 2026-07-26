@@ -68,6 +68,7 @@ scripts/verify-private-beta-local.ps1          local protected preflight
 scripts/audit-hosted-deployment-readiness.ps1  zero-cloud-write hosted readiness audit
 docs/PRIVATE_BETA_LOCAL_RUNBOOK.md             local operator runbook
 docs/HOSTED_DEPLOYMENT_READINESS.md            hosted deployment checklist and rollback plan
+docs/PHASE_0_DEPLOYMENT_STATUS.md              verified deployment and database-security truth
 ```
 
 ## Mobile development

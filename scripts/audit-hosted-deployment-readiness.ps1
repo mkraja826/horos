@@ -229,6 +229,9 @@ try {
     if ([string]$eas.build.production.env.EXPO_PUBLIC_ALLOW_DEMO_DATA -ne "false") {
         throw "EAS production builds must disable demo data."
     }
+    if ($eas.build.production.env.EXPO_PUBLIC_API_URL -ne $ExpectedApiUrl) {
+        throw "EAS production builds must use the expected Horos Edge Function URL."
+    }
 
     $legacyDeploy = @(Get-GitMatches -Pattern '"worker:deploy"' -Paths @("package.json"))
 

@@ -20,6 +20,7 @@
     "typecheck": "tsc --noEmit && npm run typecheck --workspace worker",
     "verify:reproducible": "node scripts/verify-reproducible-toolchain.mjs",
     "verify:eas-private-beta": "node scripts/verify-private-beta-build-profile.mjs",
+    "verify:production-safety": "node scripts/verify-production-fail-closed.mjs",
     "verify:hosted-beta": "node scripts/verify-hosted-private-beta.mjs",
     "verify:hosted-compatibility": "node scripts/verify-hosted-compatibility.mjs",
     "verify:hosted-phase4-analysis": "node scripts/verify-hosted-phase4-analysis-stable.mjs",

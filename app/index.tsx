@@ -5,21 +5,22 @@ import { ScrollView, View } from "react-native";
 
 import { AppText } from "@/components/app-text";
 import { BrandMark } from "@/components/brand-mark";
+import { Card } from "@/components/card";
 import { spacing } from "@/constants/theme";
 import { useApp } from "@/providers/app-provider";
 
 export default function SplashScreen() {
-  const { booting, isAuthenticated, profile } = useApp();
+  const { booting, configurationError, isAuthenticated, profile } = useApp();
 
   useEffect(() => {
-    if (booting) return;
+    if (booting || configurationError) return;
     const timer = setTimeout(() => {
       if (profile) router.replace("/home");
       else if (isAuthenticated) router.replace("/onboarding");
       else router.replace("/welcome");
     }, 900);
     return () => clearTimeout(timer);
-  }, [booting, isAuthenticated, profile]);
+  }, [booting, configurationError, isAuthenticated, profile]);
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }} scrollEnabled={false}>
@@ -63,6 +64,16 @@ export default function SplashScreen() {
             </AppText>
           </View>
           <View style={{ width: 46, height: 2, backgroundColor: "#D9A84F", borderRadius: 2 }} />
+          {configurationError ? (
+            <Card tone="warm" style={{ maxWidth: 420 }}>
+              <AppText variant="label">Service configuration required</AppText>
+              <AppText muted>
+                This build cannot connect to the protected astrology service. No chart or
+                guidance data will be shown. Please install a correctly configured build or
+                contact support.
+              </AppText>
+            </Card>
+          ) : null}
         </View>
       </LinearGradient>
     </ScrollView>

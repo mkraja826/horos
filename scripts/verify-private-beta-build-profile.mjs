@@ -16,6 +16,7 @@ function assert(condition, message) {
 const source = await readFile(new URL("../eas.json", import.meta.url), "utf8");
 const eas = JSON.parse(source);
 const profile = eas.build?.["private-beta"];
+const production = eas.build?.production;
 
 assert(profile && typeof profile === "object", "The private-beta EAS profile is missing.");
 assert(profile.extends === "base", "The private-beta profile must extend the pinned base toolchain.");
@@ -32,6 +33,12 @@ assert(String(profile.env?.EXPO_PUBLIC_PHASE4_COMPATIBILITY_ENABLED) === "false"
   "The private-beta profile must keep the Phase 4 compatibility UI disabled.");
 assert(String(profile.env?.EXPO_PUBLIC_PHASE4_ANALYSIS_ENABLED) === "false",
   "The private-beta profile must keep the Phase 4 Life Profile and period UI disabled.");
+assert(production?.env?.EXPO_PUBLIC_API_URL === EXPECTED_API_URL,
+  "The production API URL is not bound to the hosted Horos Edge Function.");
+assert(production?.env?.EXPO_PUBLIC_APP_ENV === "production",
+  "The production application environment must be production.");
+assert(String(production?.env?.EXPO_PUBLIC_ALLOW_DEMO_DATA) === "false",
+  "The production profile must disable demo data.");
 
 for (const name of EXTERNAL_PUBLIC_VARIABLES) {
   assert(!(name in (profile.env ?? {})),

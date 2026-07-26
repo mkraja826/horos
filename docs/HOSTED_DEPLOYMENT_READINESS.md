@@ -122,6 +122,12 @@ EXPO_PUBLIC_APP_ENV=production
 EXPO_PUBLIC_ALLOW_DEMO_DATA=false
 ```
 
+Runtime enforcement is defined in `lib/runtime-config.ts`. A production build
+with a missing, invalid, or non-HTTPS API URL displays a service-configuration
+error and cannot use local OTP, synthetic profiles, trials, horoscope fixtures,
+chart fixtures, or Panchanga fixtures. See
+[`PREVIEW_DATA_BOUNDARY.md`](PREVIEW_DATA_BOUNDARY.md).
+
 The EAS project ID and RevenueCat public SDK keys remain external configuration gates. They are not server secrets, but they should not be guessed.
 
 ## Repository migrations

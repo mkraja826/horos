@@ -9,6 +9,10 @@ import {
 } from "@/lib/api-client";
 import { demoProfile } from "@/lib/fixtures";
 import {
+  requirePreviewMode,
+  runtimeConfig,
+} from "@/lib/runtime-config";
+import {
   deleteSecureValue,
   getSecureJson,
   getSecureValue,
@@ -41,6 +45,7 @@ type AppContextValue = {
   booting: boolean;
   isAuthenticated: boolean;
   isApiConfigured: boolean;
+  configurationError: string | null;
   profile: UserProfile | null;
   subscription: SubscriptionState;
   requestOtp: (identifier: string) => Promise<LoginRequest>;
@@ -118,6 +123,19 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       getSecureJson<SubscriptionState>(SUBSCRIPTION_KEY),
     ]).then(async ([savedToken, savedProfile, savedSubscription]) => {
       if (!mounted) return;
+
+      const savedLocalPreview = savedToken?.startsWith("local.") === true;
+      if (savedLocalPreview && !runtimeConfig.demoDataEnabled) {
+        await Promise.all([
+          deleteSecureValue(SESSION_KEY),
+          deleteSecureValue(REFRESH_SESSION_KEY),
+          deleteSecureValue(PROFILE_KEY),
+          deleteSecureValue(SUBSCRIPTION_KEY),
+        ]);
+        if (mounted) setBooting(false);
+        return;
+      }
+
       setToken(savedToken);
       setProfile(savedProfile);
       setIdentifier(savedProfile?.identifier ?? "");
@@ -151,6 +169,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
   const requestOtp = useCallback(async (loginIdentifier: string) => {
     setIdentifier(loginIdentifier);
     if (!isApiConfigured) {
+      requirePreviewMode();
       return { challengeId: "local-challenge", devOtp: "123456" };
     }
     const response = await api.requestOtp(loginIdentifier);
@@ -159,6 +178,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
 
   const verifyOtp = useCallback(async (loginIdentifier: string, challengeId: string, otp: string) => {
     if (!isApiConfigured) {
+      requirePreviewMode();
       if (otp !== "123456") throw new Error("Use 123456 for local preview login.");
       const localToken = `local.${Date.now()}`;
       await setSecureValue(SESSION_KEY, localToken);
@@ -193,6 +213,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
         return;
       }
 
+      requirePreviewMode();
       const nextProfile = localProfile(input, identifier);
       const trial = newTrial();
       setProfile(nextProfile);
@@ -214,6 +235,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
         await setSecureJson(PROFILE_KEY, response.profile);
         return;
       }
+      requirePreviewMode();
       const nextProfile: UserProfile = {
         ...profile,
         ...input,
@@ -234,6 +256,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
 
   const activateLocalTrial = useCallback(async () => {
     if (isApiConfigured || subscription.isPremium) return;
+    requirePreviewMode();
     const next = newTrial();
     setSubscription(next);
     await setSecureJson(SUBSCRIPTION_KEY, next);
@@ -264,6 +287,7 @@ export function AppProvider({ children }: React.PropsWithChildren) {
       booting,
       isAuthenticated: Boolean(token),
       isApiConfigured,
+      configurationError: runtimeConfig.configurationError,
       profile,
       subscription,
       requestOtp,

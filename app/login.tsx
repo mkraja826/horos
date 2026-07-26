@@ -16,7 +16,7 @@ import { useAppTheme } from "@/providers/theme-provider";
 type LoginMethod = "Phone" | "Email";
 
 export default function LoginScreen() {
-  const { requestOtp, verifyOtp, isApiConfigured } = useApp();
+  const { requestOtp, verifyOtp } = useApp();
   const { colors } = useAppTheme();
   const [method, setMethod] = useState<LoginMethod>("Phone");
   const [identifier, setIdentifier] = useState("");
@@ -112,10 +112,10 @@ export default function LoginScreen() {
               error={error || undefined}
               style={{ textAlign: "center", fontSize: 24, letterSpacing: 8, fontVariant: ["tabular-nums"] }}
             />
-            {(devOtp || !isApiConfigured) && (
+            {devOtp && (
               <View style={{ backgroundColor: colors.primarySoft, padding: spacing.md, borderRadius: 12 }}>
                 <AppText variant="caption" color={colors.primary} style={{ textAlign: "center" }}>
-                  Preview code: {devOtp ?? "123456"}
+                  Preview code: {devOtp}
                 </AppText>
               </View>
             )}

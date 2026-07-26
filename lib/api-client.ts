@@ -3,6 +3,7 @@ import {
   getSecureValue,
   setSecureValue,
 } from "@/lib/secure-storage";
+import { runtimeConfig } from "@/lib/runtime-config";
 import type {
   BirthChart,
   CompatibilityReport,
@@ -22,7 +23,7 @@ import type {
   SavedCompatibilityPartner,
 } from "@/types/saved-partners";
 
-const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/$/, "");
+const configuredUrl = runtimeConfig.apiUrl;
 export const isApiConfigured = Boolean(configuredUrl);
 export const SESSION_KEY = "session-token";
 export const REFRESH_SESSION_KEY = "session-refresh-token";

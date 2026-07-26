@@ -2,17 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api, isApiConfigured } from "@/lib/api-client";
 import { chartFixture, dailyFixture, monthlyFixture, panchangFixture, weeklyFixture } from "@/lib/fixtures";
+import { runtimeConfig } from "@/lib/runtime-config";
 import { useApp } from "@/providers/app-provider";
 import type { BirthChart, HoroscopeReading, Panchang } from "@/types/models";
 
-const allowDemoData = !isApiConfigured || process.env.EXPO_PUBLIC_ALLOW_DEMO_DATA === "true";
-
 async function withPreviewFallback<T>(request: () => Promise<T>, fallback: () => T) {
-  if (!isApiConfigured) return fallback();
+  if (!isApiConfigured && runtimeConfig.demoDataEnabled) return fallback();
   try {
     return await request();
   } catch (error) {
-    if (allowDemoData) return fallback();
+    if (runtimeConfig.demoDataEnabled) return fallback();
     throw error;
   }
 }

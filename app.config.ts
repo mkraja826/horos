@@ -1,6 +1,8 @@
 import type { ExpoConfig } from "expo/config";
 
-const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+const projectId =
+  process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+  "c10899ea-e46b-4408-8e11-9d3549cb2623";
 
 const config: ExpoConfig = {
   name: "Daily Vedic Astro",
@@ -45,7 +47,7 @@ const config: ExpoConfig = {
     typedRoutes: true
   },
   extra: {
-    eas: projectId ? { projectId } : undefined
+    eas: { projectId }
   }
 };
 
